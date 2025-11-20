@@ -1,5 +1,5 @@
 'use client';
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Calendar, Clock, MapPin, Users, FileText, Code, QrCode, ScanLine, CheckCircle } from "lucide-react";
@@ -101,8 +101,9 @@ function AttendanceScanner({ onCodeScanned, onClose }: { onCodeScanned: (code: s
 }
 
 
-export default function StudentConsultationDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function StudentConsultationDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
