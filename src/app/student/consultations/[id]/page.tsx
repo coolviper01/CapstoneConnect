@@ -70,7 +70,8 @@ function AttendanceScanner({ onCodeScanned, onClose }: { onCodeScanned: (code: s
       }
     };
     getCameraPermission();
-  }, [toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toast, webcamRef.current]);
   
   useEffect(() => {
     const interval = setInterval(() => {
@@ -244,9 +245,9 @@ export default function StudentConsultationDetailPage() {
     )
   }
 
-  if (!consultation || error) {
+  if (!consultation) {
     return (
-        <div className="flex flex-col gap-6 items-center">
+        <div className="flex flex-col gap-6 items-center pt-8">
             <PageHeader title="Consultation Not Found" />
              <Alert variant="destructive" className="max-w-lg">
                 <AlertTriangle className="h-4 w-4" />
