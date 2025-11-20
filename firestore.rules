@@ -64,9 +64,10 @@ service cloud.firestore {
 
     /**
      * Checks if the requesting user is the designated advisor on a document.
+     * It checks both 'adviserId' and 'advisorId' for compatibility.
      */
     function isAdvisor(docData) {
-      return request.auth.uid == docData.adviserId;
+      return request.auth.uid == docData.adviserId || request.auth.uid == docData.advisorId;
     }
     
     /**
