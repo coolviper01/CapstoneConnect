@@ -126,8 +126,9 @@
       * Validates that a user profile's 'id' field is immutable on update.
       * The student status field must also remain unchanged by the student.
       */
-      function isStudentProfileSecure() {
-        return request.resource.data.id == resource.data.id && request.resource.data.status == resource.data.status;
+      function isStudentProfileUpdateSecure() {
+        return request.resource.data.id == resource.data.id && 
+               request.resource.data.status == resource.data.status;
       }
 
       /**
@@ -205,7 +206,7 @@
         allow get: if isSignedIn();
         allow list: if isTeacher(); // Allow teachers to list students for approval.
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
-        allow update: if (isOwner(studentId) && isStudentProfileSecure()) || 
+        allow update: if (isOwner(studentId) && isStudentProfileUpdateSecure()) || 
                          (isTeacher() && request.resource.data.keys().hasOnly(["status"]));
         allow delete: if resource != null && isOwner(studentId);
       }
