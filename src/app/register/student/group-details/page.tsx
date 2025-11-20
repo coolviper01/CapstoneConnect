@@ -50,12 +50,12 @@ export default function StudentGroupDetailsPage() {
       if (user) {
         setIsAuthReady(true);
       } else {
-        router.push('/register/student');
+        router.replace('/register/student');
       }
     });
     return () => unsubscribe();
   }, [auth, router]);
-
+  
   const subjectsQuery = useMemoFirebase(() => collection(firestore, 'subjects'), [firestore]);
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
 
@@ -129,7 +129,7 @@ export default function StudentGroupDetailsPage() {
   if (!isAuthReady) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
-            <p>Loading...</p>
+            <p>Verifying session...</p>
         </div>
     );
   }
