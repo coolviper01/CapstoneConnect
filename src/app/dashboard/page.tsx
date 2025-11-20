@@ -6,10 +6,11 @@ import { doc, getDoc } from "firebase/firestore";
 import AdviserDashboard from './adviser-dashboard';
 import TeacherDashboard from './teacher-dashboard';
 import { Skeleton } from '@/components/ui/skeleton';
+import StudentDashboardPage from '../student/page';
 
 export default function DashboardPage() {
   const { user, firestore, isUserLoading } = useFirebase();
-  const [role, setRole] = useState<'adviser' | 'teacher' | null>(null);
+  const [role, setRole] = useState<'adviser' | 'teacher' | 'student' | null>(null);
   const [isRoleLoading, setIsRoleLoading] = useState(true);
 
   useEffect(() => {
@@ -28,6 +29,13 @@ export default function DashboardPage() {
           setIsRoleLoading(false);
           return;
         }
+        const studentDoc = await getDoc(doc(firestore, "students", user.uid));
+        if (studentDoc.exists()) {
+          setRole('student');
+          setIsRoleLoading(false);
+          return;
+        }
+
         setRole(null);
         setIsRoleLoading(false);
       }
@@ -59,6 +67,13 @@ export default function DashboardPage() {
   if (role === 'teacher') {
     return <TeacherDashboard />;
   }
+  
+  if (role === 'student') {
+    // Redirect or render student dashboard
+    // For now, let's assume you might want to show a student view here
+    return <StudentDashboardPage />;
+  }
+
 
   return <div>Error: User role could not be determined.</div>;
 }

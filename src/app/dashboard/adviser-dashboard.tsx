@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown, Lock } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -21,6 +21,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import QRCode from "react-qr-code";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     const firestore = useFirestore();
@@ -130,6 +132,18 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
         }
     };
 
+    const handleCloseConsultation = () => {
+        if (consultationRef) {
+            updateDocumentNonBlocking(consultationRef, { status: 'Completed' });
+            toast({
+                title: "Consultation Closed",
+                description: "This consultation has been marked as completed."
+            });
+        }
+    };
+
+    const hasPendingUpdates = discussionPoints.some(p => p.studentUpdateStatus === 'Pending');
+
     return (
         <div className="grid md:grid-cols-3 gap-6 pt-6">
             <div className="md:col-span-1 flex flex-col gap-6">
@@ -220,7 +234,10 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
             </div>
             <div className="md:col-span-2 flex flex-col gap-6">
                 <Card>
-                    <CardHeader><CardTitle className="font-semibold">Discussion Points</CardTitle><CardDescription>Add comments and action items for the students. Review their updates here.</CardDescription></CardHeader>
+                    <CardHeader>
+                        <CardTitle className="font-semibold">Discussion Points</CardTitle>
+                        <CardDescription>Add comments and action items for the students. Review their updates here.</CardDescription>
+                    </CardHeader>
                     <CardContent className="space-y-4">
                         {discussionPoints.map((point, index) => (
                             <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
@@ -271,7 +288,32 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                         ))}
                         <Button variant="outline" onClick={addDiscussionPoint}><PlusCircle className="mr-2 h-4 w-4" /> Add Point</Button>
                     </CardContent>
-                    <CardFooter><Button onClick={saveDiscussionPoints}>Save Discussion Points</Button></CardFooter>
+                    <CardFooter className='flex justify-between'>
+                        <Button onClick={saveDiscussionPoints}>Save Discussion Points</Button>
+                        {consultation.status === 'Scheduled' && (
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        {/* This div is necessary for the tooltip to work on a disabled button */}
+                                        <div>
+                                            <Button
+                                                variant="destructive"
+                                                onClick={handleCloseConsultation}
+                                                disabled={hasPendingUpdates}
+                                            >
+                                                <Lock className="mr-2 h-4 w-4" /> Close Consultation
+                                            </Button>
+                                        </div>
+                                    </TooltipTrigger>
+                                    {hasPendingUpdates && (
+                                        <TooltipContent>
+                                            <p>You must approve or reject all pending student updates first.</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </CardFooter>
                 </Card>
             </div>
             
@@ -298,12 +340,27 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
 
 function ConsultationCard({ consultation }: { consultation: Consultation }) {
   const [open, setOpen] = useState(false);
+  const getBadgeVariant = (status: Consultation['status']): "default" | "secondary" | "outline" | "destructive" => {
+    switch(status) {
+        case 'Scheduled': return 'default';
+        case 'Completed': return 'secondary';
+        case 'Pending Approval': return 'outline';
+        case 'Cancelled': return 'destructive';
+        default: return 'secondary';
+    }
+  }
+
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card>
         <CardHeader>
-          <CardTitle className="font-semibold">{consultation.capstoneTitle}</CardTitle>
-          <CardDescription>{consultation.blockGroupNumber}</CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+                <CardTitle className="font-semibold">{consultation.capstoneTitle}</CardTitle>
+                <CardDescription>{consultation.blockGroupNumber}</CardDescription>
+            </div>
+            <Badge variant={getBadgeVariant(consultation.status)}>{consultation.status}</Badge>
+          </div>
         </CardHeader>
         <CardContent className="flex-1 space-y-3 text-sm">
           <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{consultation.date ? new Date(consultation.date).toLocaleDateString() : 'Not Scheduled'}</span></div>
@@ -348,8 +405,8 @@ export default function AdviserDashboard() {
 
   
   // --- MEMOIZED DATA ---
-  const scheduledConsultations = useMemo(() => allConsultations?.filter(c => c.status === 'Scheduled'), [allConsultations]);
-  const pastConsultations = useMemo(() => allConsultations?.filter(c => c.status === 'Completed' || c.status === 'Cancelled' || (c.date && new Date(c.date) < new Date())), [allConsultations]);
+  const scheduledConsultations = useMemo(() => allConsultations?.filter(c => c.status === 'Scheduled').sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()), [allConsultations]);
+  const pastConsultations = useMemo(() => allConsultations?.filter(c => c.status === 'Completed' || c.status === 'Cancelled').sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()), [allConsultations]);
   const pendingConsultationRequests = useMemo(() => allConsultations?.filter(c => c.status === 'Pending Approval'), [allConsultations]);
 
   // --- HANDLERS ---
@@ -470,11 +527,11 @@ export default function AdviserDashboard() {
         <TabsContent value="consultations">
             <div className="space-y-8">
               <div>
-                <h2 className="text-2xl font-headline font-bold mb-4">Scheduled Consultations</h2>
-                {renderConsultationList(scheduledConsultations, isLoadingConsultations, "No upcoming consultations scheduled.")}
+                <h2 className="text-2xl font-headline font-bold mb-4">Open Consultations</h2>
+                {renderConsultationList(scheduledConsultations, isLoadingConsultations, "No open consultations.")}
               </div>
               <div>
-                <h2 className="text-2xl font-headline font-bold mb-4">Past Consultations</h2>
+                <h2 className="text-2xl font-headline font-bold mb-4">Closed Consultations</h2>
                 {renderConsultationList(pastConsultations, isLoadingConsultations, "No past consultations found.")}
               </div>
             </div>

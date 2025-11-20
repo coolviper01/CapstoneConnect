@@ -18,11 +18,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking, useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
-import type { CapstoneProject, Subject } from '@/lib/types';
+import { collection, doc, query, where } from 'firebase/firestore';
+import type { CapstoneProject, Subject, Consultation } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import React from 'react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Hourglass } from 'lucide-react';
 
 const formSchema = z.object({
   agenda: z.string().min(20, 'Please provide a more detailed agenda (min. 20 characters).'),
@@ -41,6 +43,17 @@ export default function RequestConsultationPage() {
   
   const subjectsQuery = useMemoFirebase(() => collection(firestore, 'subjects'), [firestore]);
   const { data: subjects } = useCollection<Subject>(subjectsQuery);
+
+  // Query for open consultations for this project
+  const openConsultationsQuery = useMemoFirebase(() => {
+    if (!projectId) return null;
+    return query(
+        collection(firestore, 'consultations'),
+        where('capstoneProjectId', '==', projectId),
+        where('status', '==', 'Scheduled')
+    );
+  }, [firestore, projectId]);
+  const { data: openConsultations, isLoading: isLoadingOpenConsultations } = useCollection<Consultation>(openConsultationsQuery);
 
   const subject = React.useMemo(() => {
     if (!project || !subjects) return null;
@@ -67,6 +80,11 @@ export default function RequestConsultationPage() {
     if (project.status !== 'Approved') {
        toast({ variant: 'destructive', title: 'Error', description: 'Consultations can only be requested for approved projects.' });
        return;
+    }
+
+    if (openConsultations && openConsultations.length > 0) {
+      toast({ variant: 'destructive', title: 'Open Consultation Exists', description: 'You must wait for the current open consultation to be closed before requesting a new one.' });
+      return;
     }
 
     const consultationsCol = collection(firestore, 'consultations');
@@ -118,6 +136,8 @@ export default function RequestConsultationPage() {
     )
   }
 
+  const hasOpenConsultation = openConsultations && openConsultations.length > 0;
+
   return (
     <div className="flex flex-col gap-6 max-w-4xl mx-auto">
       <PageHeader
@@ -126,6 +146,16 @@ export default function RequestConsultationPage() {
       />
 
       {renderProjectInfo()}
+
+      {hasOpenConsultation && (
+        <Alert>
+            <Hourglass className="h-4 w-4" />
+            <AlertTitle>Open Consultation in Progress</AlertTitle>
+            <AlertDescription>
+                This project already has an open consultation. You must wait for the adviser to close it before you can request a new one.
+            </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -146,13 +176,14 @@ export default function RequestConsultationPage() {
                         placeholder="Briefly list the topics you want to discuss (e.g., progress update, specific challenges, next steps)."
                         className="min-h-[150px]"
                         {...field}
+                        disabled={hasOpenConsultation}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={isLoadingProject}>
+              <Button type="submit" disabled={isLoadingProject || isLoadingOpenConsultations || hasOpenConsultation}>
                 Send Request
               </Button>
             </form>
