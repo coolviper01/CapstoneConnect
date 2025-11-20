@@ -207,7 +207,7 @@
         allow list: if isTeacher(); // Allow teachers to list students for approval.
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
         allow update: if (isOwner(studentId) && isStudentProfileUpdateSecure()) ||
-                         (isTeacher() && request.resource.data.keys().hasAll(['status']) && request.resource.data.size() == 1);
+                         (isTeacher() && request.resource.data.status != resource.data.status);
         allow delete: if resource != null && isOwner(studentId);
       }
 
@@ -310,3 +310,5 @@
       }
     }
   }
+
+    
