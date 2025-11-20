@@ -26,9 +26,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDocumentNonBlocking, useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
-import type { CapstoneProject, Student } from "@/lib/types";
+import type { CapstoneProject } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEffect } from "react";
+import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
   projectId: z.string().min(1, "You must select a project."),
@@ -36,12 +36,13 @@ const formSchema = z.object({
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
   venue: z.string().min(1, "Venue is required"),
+  agenda: z.string().optional(),
 });
 
 export default function SchedulePage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
 
   const projectsQuery = useMemoFirebase(
     () => user ? query(
@@ -60,6 +61,7 @@ export default function SchedulePage() {
       startTime: "",
       endTime: "",
       venue: "",
+      agenda: "",
     },
   });
 
@@ -78,7 +80,7 @@ export default function SchedulePage() {
       capstoneProjectId: selectedProject.id,
       capstoneTitle: selectedProject.title,
       projectDetails: selectedProject.details,
-      // These would be fetched based on studentIds in a real app
+      // These would be fetched based on studentIds in a real app, for now it is empty
       students: [], 
       studentIds: selectedProject.studentIds,
       advisorId: selectedProject.adviserId,
@@ -86,6 +88,7 @@ export default function SchedulePage() {
       startTime: values.startTime,
       endTime: values.endTime,
       venue: values.venue,
+      agenda: values.agenda || "Adviser-scheduled session.",
       status: "Scheduled",
     });
 
@@ -98,7 +101,7 @@ export default function SchedulePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Schedule a New Consultation" description="Fill out the form below to create a new consultation appointment." />
+      <PageHeader title="Schedule a New Consultation" description="Fill out the form below to create a new consultation appointment for an approved project." />
       <Card>
         <CardHeader>
           <CardTitle>Consultation Details</CardTitle>
@@ -226,6 +229,19 @@ export default function SchedulePage() {
                     </FormItem>
                   )}
                 />
+                 <FormField
+                  control={form.control}
+                  name="agenda"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Agenda (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Topics to discuss..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               <Button type="submit" disabled={!selectedProject}>Schedule Consultation</Button>
             </form>
@@ -235,5 +251,3 @@ export default function SchedulePage() {
     </div>
   );
 }
-
-    

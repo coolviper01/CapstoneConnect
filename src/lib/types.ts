@@ -44,10 +44,10 @@ export type Consultation = {
   academicYear: string;
   capstoneTitle: string;
   blockGroupNumber: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  venue: string;
+  date?: string; // Optional for pending requests
+  startTime?: string; // Optional for pending requests
+  endTime?: string; // Optional for pending requests
+  venue?: string; // Optional for pending requests
   projectDetails: string;
   status: 'Pending Approval' | 'Scheduled' | 'Completed' | 'Cancelled';
   students: Student[];
