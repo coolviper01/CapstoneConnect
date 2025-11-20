@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -26,9 +25,9 @@ import { Input } from '@/components/ui/input';
 import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirestore, useCollection, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Subject } from '@/lib/types';
+import type { Subject, CapstoneProject } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const formSchema = z.object({
@@ -73,12 +72,39 @@ export default function StudentGroupDetailsPage() {
     }
 
     try {
+        // Step 1: Update the student's profile first.
         const studentRef = doc(firestore, 'students', user.uid);
-        await updateDocumentNonBlocking(studentRef, {
+        await updateDoc(studentRef, {
             subjectId: values.subjectId,
             block: values.block,
             groupNumber: values.groupNumber,
         });
+        
+        // Step 2: Check for an existing project and join it.
+        const projectsQuery = query(
+            collection(firestore, 'capstoneProjects'),
+            where('subjectId', '==', values.subjectId),
+            where('block', '==', values.block),
+            where('groupNumber', '==', values.groupNumber)
+        );
+
+        const projectSnapshot = await getDocs(projectsQuery);
+        if (!projectSnapshot.empty) {
+            const projectDoc = projectSnapshot.docs[0];
+            const projectData = projectDoc.data() as CapstoneProject;
+
+            // Add student to the project if they aren't already in it.
+            if (!projectData.studentIds.includes(user.uid)) {
+                await updateDoc(projectDoc.ref, {
+                    studentIds: arrayUnion(user.uid)
+                });
+                toast({
+                    title: "Project Joined!",
+                    description: `You have been automatically added to "${projectData.title}".`
+                });
+            }
+        }
+
 
         toast({
             title: 'Registration Complete!',
