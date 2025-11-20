@@ -2,10 +2,12 @@
 export type Student = {
   id: string;
   name: string;
+  email: string; // Added email
   avatarUrl?: string;
   subjectId?: string;
   block?: string;
   groupNumber?: string;
+  status?: 'Pending Approval' | 'Active' | 'Rejected';
 };
 
 export type Advisor = {

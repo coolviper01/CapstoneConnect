@@ -50,7 +50,20 @@ export default function LoginPage() {
 
       const studentDoc = await getDoc(doc(firestore, "students", user.uid));
       if (studentDoc.exists()) {
-        router.push('/student');
+        const studentData = studentDoc.data();
+        if (studentData.status === 'Active') {
+            router.push('/student');
+        } else if (studentData.status === 'Pending Approval') {
+            router.push('/student/pending');
+        } else {
+            // Handle rejected or other statuses
+            toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: "Your registration was not approved. Please contact your teacher.",
+            });
+            auth.signOut();
+        }
         return;
       }
       
@@ -129,3 +142,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

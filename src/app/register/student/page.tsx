@@ -71,6 +71,7 @@ export default function StudentRegisterPage() {
         id: user.uid,
         name: values.name,
         email: values.email,
+        status: 'Pending Approval', // Set initial status
       });
       
       toast({
@@ -169,3 +170,5 @@ export default function StudentRegisterPage() {
     </div>
   );
 }
+
+    

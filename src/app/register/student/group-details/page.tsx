@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -72,46 +73,20 @@ export default function StudentGroupDetailsPage() {
     }
 
     try {
-        // Step 1: Update the student's profile first.
         const studentRef = doc(firestore, 'students', user.uid);
         await updateDoc(studentRef, {
             subjectId: values.subjectId,
             block: values.block,
             groupNumber: values.groupNumber,
+            status: "Pending Approval",
         });
-        
-        // Step 2: Check for an existing project and join it.
-        const projectsQuery = query(
-            collection(firestore, 'capstoneProjects'),
-            where('subjectId', '==', values.subjectId),
-            where('block', '==', values.block),
-            where('groupNumber', '==', values.groupNumber)
-        );
-
-        const projectSnapshot = await getDocs(projectsQuery);
-        if (!projectSnapshot.empty) {
-            const projectDoc = projectSnapshot.docs[0];
-            const projectData = projectDoc.data() as CapstoneProject;
-
-            // Add student to the project if they aren't already in it.
-            if (!projectData.studentIds.includes(user.uid)) {
-                await updateDoc(projectDoc.ref, {
-                    studentIds: arrayUnion(user.uid)
-                });
-                toast({
-                    title: "Project Joined!",
-                    description: `You have been automatically added to "${projectData.title}".`
-                });
-            }
-        }
-
 
         toast({
-            title: 'Registration Complete!',
-            description: 'Your profile has been updated with your group details.',
+            title: 'Registration Submitted!',
+            description: 'Your registration is now pending approval from your teacher.',
         });
 
-        router.push('/student');
+        router.push('/student/pending');
 
     } catch (error: any) {
       toast({
@@ -130,7 +105,7 @@ export default function StudentGroupDetailsPage() {
               <p className='mb-4'>You need to create an account first.</p>
               <Button onClick={() => router.push('/register/student')}>Go to Registration</Button>
           </div>
-      )
+      );
   }
 
   return (
@@ -143,7 +118,7 @@ export default function StudentGroupDetailsPage() {
           <CardHeader>
             <CardTitle className="text-2xl">Student Registration (Step 2 of 2)</CardTitle>
             <CardDescription>
-              Please provide your subject and group information.
+              Please provide your subject and group information to submit for approval.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -187,7 +162,7 @@ export default function StudentGroupDetailsPage() {
                                 <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Choose your block..." />
-                                    </SelectTrigger>
+                                    </Trigger>
                                 </FormControl>
                                 <SelectContent>
                                     {selectedSubject.blocks.map(block => (

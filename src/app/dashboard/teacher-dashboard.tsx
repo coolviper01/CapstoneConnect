@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { Check, X } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
-import type { CapstoneProject, Consultation, Advisor } from '@/lib/types';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import type { CapstoneProject, Consultation, Advisor, Student } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,10 @@ export default function TeacherDashboard() {
     const [projectToApprove, setProjectToApprove] = useState<CapstoneProject | null>(null);
     const [projectToReject, setProjectToReject] = useState<CapstoneProject | null>(null);
     const [rejectionReason, setRejectionReason] = useState("");
+    const [studentToApprove, setStudentToApprove] = useState<Student | null>(null);
 
+
+    // --- QUERIES ---
     const pendingProjectsQuery = useMemoFirebase(
         () => user ? query(
             collection(firestore, "capstoneProjects"), 
@@ -61,14 +64,27 @@ export default function TeacherDashboard() {
         [firestore, user]
     );
     const { data: allProjects, isLoading: isLoadingAllProjects } = useCollection<CapstoneProject>(allProjectsQuery);
+    
+    // --- New Query for Pending Students ---
+    const teacherSubjectsQuery = useMemoFirebase(() => user ? query(collection(firestore, "subjects"), where("teacherId", "==", user.uid)) : null, [firestore, user]);
+    const { data: teacherSubjects, isLoading: isLoadingSubjects } = useCollection(teacherSubjectsQuery);
+    const teacherSubjectIds = useMemo(() => teacherSubjects?.map(s => s.id) || [], [teacherSubjects]);
+
+    const pendingStudentsQuery = useMemoFirebase(() => {
+        if (teacherSubjectIds.length === 0) return null;
+        return query(
+            collection(firestore, "students"), 
+            where("subjectId", "in", teacherSubjectIds),
+            where("status", "==", "Pending Approval")
+        );
+    }, [firestore, teacherSubjectIds]);
+    const { data: pendingStudents, isLoading: isLoadingPendingStudents } = useCollection<Student>(pendingStudentsQuery);
+    // --- End New Query ---
 
     const projectIds = useMemo(() => allProjects?.map(p => p.id) || [], [allProjects]);
 
     const consultationsQuery = useMemoFirebase(() => {
         if (!projectIds || projectIds.length === 0) return null;
-        // Firestore 'in' queries are limited to 30 elements. 
-        // For a teacher dashboard, this might be a concern in a large-scale app.
-        // For this context, we assume it's acceptable.
         return query(collection(firestore, "consultations"), where("capstoneProjectId", "in", projectIds))
     }, [firestore, projectIds]);
 
@@ -77,14 +93,14 @@ export default function TeacherDashboard() {
     const advisorsQuery = useMemoFirebase(() => collection(firestore, "advisors"), [firestore]);
     const { data: advisors, isLoading: isLoadingAdvisors } = useCollection<Advisor>(advisorsQuery);
     
-    const handleApprove = (project: CapstoneProject) => {
+    const handleApproveProject = (project: CapstoneProject) => {
         const projectRef = doc(firestore, 'capstoneProjects', project.id);
         updateDocumentNonBlocking(projectRef, { status: 'Pending Adviser Approval' });
         toast({ title: "Project Approved!", description: `"${project.title}" has been forwarded to the adviser.` });
         setProjectToApprove(null);
     };
 
-    const handleReject = () => {
+    const handleRejectProject = () => {
         if (!projectToReject) return;
         const projectRef = doc(firestore, 'capstoneProjects', projectToReject.id);
         updateDocumentNonBlocking(projectRef, { status: 'Rejected', rejectionReason: rejectionReason });
@@ -93,11 +109,44 @@ export default function TeacherDashboard() {
         setRejectionReason("");
     };
 
+    const handleApproveStudent = async (student: Student) => {
+        const studentRef = doc(firestore, 'students', student.id);
+        await updateDocumentNonBlocking(studentRef, { status: 'Active' });
+
+        // Post-approval logic: try to join project
+        if (student.subjectId && student.block && student.groupNumber) {
+             const projectsQuery = query(
+                collection(firestore, 'capstoneProjects'),
+                where('subjectId', '==', student.subjectId),
+                where('block', '==', student.block),
+                where('groupNumber', '==', student.groupNumber)
+            );
+            const projectSnapshot = await getDocs(projectsQuery);
+            if (!projectSnapshot.empty) {
+                const projectDoc = projectSnapshot.docs[0];
+                updateDocumentNonBlocking(projectDoc.ref, { studentIds: [...projectDoc.data().studentIds, student.id] });
+                 toast({ title: "Student Approved & Added to Project!", description: `${student.name} is now active and has been added to their group's project.` });
+            } else {
+                toast({ title: "Student Approved!", description: `${student.name} is now an active student.` });
+            }
+        } else {
+             toast({ title: "Student Approved!", description: `${student.name} is now an active student.` });
+        }
+        
+        setStudentToApprove(null);
+    };
+
+
     const getAdviserName = (adviserId: string) => {
         return advisors?.find(a => a.id === adviserId)?.name || 'N/A';
     }
+    
+    const getSubjectName = (subjectId?: string) => {
+        if (!subjectId) return 'N/A';
+        return teacherSubjects?.find(s => s.id === subjectId)?.name || 'N/A';
+    }
 
-    const isLoading = isUserLoading || isLoadingPendingProjects || isLoadingAllProjects || isLoadingConsultations || isLoadingAdvisors;
+    const isLoading = isUserLoading || isLoadingPendingProjects || isLoadingAllProjects || isLoadingConsultations || isLoadingAdvisors || isLoadingSubjects || isLoadingPendingStudents;
 
     if (isLoading) {
         return (
@@ -121,15 +170,22 @@ export default function TeacherDashboard() {
             />
 
             <Tabs defaultValue="approvals">
-                <TabsList>
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="approvals">
-                        Pending Approvals
+                        Project Approvals
                         {pendingProjects && pendingProjects.length > 0 && 
                             <Badge className="ml-2">{pendingProjects.length}</Badge>
                         }
                     </TabsTrigger>
+                     <TabsTrigger value="students">
+                        Student Approvals
+                        {pendingStudents && pendingStudents.length > 0 && 
+                            <Badge className="ml-2">{pendingStudents.length}</Badge>
+                        }
+                    </TabsTrigger>
                     <TabsTrigger value="consultations">All Consultations</TabsTrigger>
                 </TabsList>
+
                 <TabsContent value="approvals">
                     <Card>
                         <CardHeader>
@@ -167,6 +223,50 @@ export default function TeacherDashboard() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+                
+                <TabsContent value="students">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Pending Student Registrations</CardTitle>
+                            <CardDescription>Approve students who have registered for your subjects.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             {(!pendingStudents || pendingStudents.length === 0) ? (
+                                <div className="text-center py-12 text-muted-foreground">
+                                    <p>No pending student registrations.</p>
+                                </div>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Student Name</TableHead>
+                                            <TableHead>Email</TableHead>
+                                            <TableHead>Subject</TableHead>
+                                            <TableHead>Block & Group</TableHead>
+                                            <TableHead className="text-right">Action</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingStudents.map(student => (
+                                            <TableRow key={student.id}>
+                                                <TableCell className="font-medium">{student.name}</TableCell>
+                                                <TableCell>{student.email}</TableCell>
+                                                <TableCell>{getSubjectName(student.subjectId)}</TableCell>
+                                                <TableCell>{student.block} - Grp {student.groupNumber}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button size="sm" onClick={() => setStudentToApprove(student)}>
+                                                         <Check className="mr-2 h-4 w-4" /> Approve
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
                 <TabsContent value="consultations">
                      <Card>
                         <CardHeader>
@@ -209,7 +309,7 @@ export default function TeacherDashboard() {
                 </TabsContent>
             </Tabs>
 
-            {/* Approve Confirmation Dialog */}
+            {/* Project Approve Confirmation Dialog */}
             <AlertDialog open={!!projectToApprove} onOpenChange={() => setProjectToApprove(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -220,14 +320,14 @@ export default function TeacherDashboard() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleApprove(projectToApprove!)}>
+                        <AlertDialogAction onClick={() => handleApproveProject(projectToApprove!)}>
                             Yes, Approve Project
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
             
-            {/* Reject Confirmation Dialog */}
+            {/* Project Reject Confirmation Dialog */}
             <AlertDialog open={!!projectToReject} onOpenChange={() => setProjectToReject(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -245,8 +345,26 @@ export default function TeacherDashboard() {
                     </div>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleReject} disabled={!rejectionReason}>
+                        <AlertDialogAction onClick={handleRejectProject} disabled={!rejectionReason}>
                            Confirm Rejection
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+             {/* Student Approve Confirmation Dialog */}
+            <AlertDialog open={!!studentToApprove} onOpenChange={() => setStudentToApprove(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Approve this student?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                           This will grant {studentToApprove?.name} access to the platform. They may be automatically added to a project if one exists for their group.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleApproveStudent(studentToApprove!)}>
+                            Yes, Approve Student
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -254,3 +372,5 @@ export default function TeacherDashboard() {
         </div>
     );
 }
+
+    

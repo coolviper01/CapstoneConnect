@@ -2,6 +2,7 @@
 'use client';
 
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, Calendar, Clock, MapPin, Hourglass, UserPlus } from "lucide-react";
@@ -18,22 +19,23 @@ export default function StudentDashboardPage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
   
   const studentQuery = useMemoFirebase(() => user ? query(collection(firestore, "students"), where("id", "==", user.uid)) : null, [firestore, user]);
   const { data: studentData, isLoading: isLoadingStudent } = useCollection<Student>(studentQuery);
   const student = useMemo(() => studentData?.[0], [studentData]);
 
   const consultationsQuery = useMemoFirebase(
-    () => user ? query(
+    () => (user && student?.status === 'Active') ? query(
         collection(firestore, "consultations"), 
         where("studentIds", "array-contains", user.uid)
     ) : null,
-    [firestore, user]
+    [firestore, user, student?.status]
   );
   const { data: studentConsultations, isLoading: isLoadingConsultations } = useCollection<Consultation>(consultationsQuery);
 
   const potentialProjectQuery = useMemoFirebase(() => {
-    if (!student || !student.subjectId || !student.block || !student.groupNumber) return null;
+    if (!student || !student.subjectId || !student.block || !student.groupNumber || student.status !== 'Active') return null;
     return query(
         collection(firestore, 'capstoneProjects'),
         where('subjectId', '==', student.subjectId),
@@ -48,6 +50,15 @@ export default function StudentDashboardPage() {
       // Find a project where the current user is NOT already a member
       return potentialProjects.find(p => !p.studentIds.includes(user.uid));
   }, [potentialProjects, user]);
+
+  if (!isLoadingStudent && student?.status === 'Pending Approval') {
+    router.replace('/student/pending');
+    return (
+        <div className="flex flex-col gap-6 items-center justify-center h-full">
+            <p>Your account is pending approval. Redirecting...</p>
+        </div>
+    );
+  }
 
   const handleJoinProject = () => {
     if (!projectToJoin || !user) return;
