@@ -52,7 +52,8 @@ export default function StudentProjectsPage() {
     setRegisterDialogOpen(true);
   };
   
-  const userHasProject = projects && projects.length > 0;
+  const activeProject = projects?.find(p => p.status !== 'Rejected');
+  const userHasActiveProject = !!activeProject;
   
   const getStatusIcon = (status: CapstoneProject['status']) => {
     switch (status) {
@@ -82,39 +83,46 @@ export default function StudentProjectsPage() {
     }
   };
 
-  const renderMyProject = () => {
+  const renderMyProjects = () => {
     if (isLoadingProjects || isUserLoading) {
       return <Card><CardHeader><Skeleton className="h-6 w-3/4 mb-2" /></CardHeader><CardContent><Skeleton className="h-20 w-full" /></CardContent></Card>
     }
-    if (userHasProject && projects) {
-      const project = projects[0];
-       const subject = subjects?.find(s => s.id === project.subjectId);
+    if (projects && projects.length > 0) {
       return (
-        <Card className="bg-primary/5 border-primary">
-          <CardHeader>
-            <div className='flex justify-between items-start'>
-                <div>
-                    <CardTitle>{project.title}</CardTitle>
-                    {subject && <CardDescription>Registered under: {subject.name}</CardDescription>}
-                </div>
-                <Badge variant={getBadgeVariant(project.status)}>
-                    <div className="flex items-center gap-2">
-                        {getStatusIcon(project.status)}
-                        {project.status}
-                    </div>
-                </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">{project.details}</p>
-             {project.status === 'Rejected' && project.rejectionReason && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertTitle>Rejection Reason</AlertTitle>
-                <AlertDescription>{project.rejectionReason}</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+        {projects.map(project => {
+            const subject = subjects?.find(s => s.id === project.subjectId);
+            return (
+              <Card key={project.id} className={cn(
+                project.status === 'Rejected' ? 'bg-destructive/5 border-destructive/20' : 'bg-primary/5 border-primary/20'
+              )}>
+                <CardHeader>
+                  <div className='flex justify-between items-start'>
+                      <div>
+                          <CardTitle>{project.title}</CardTitle>
+                          {subject && <CardDescription>Registered under: {subject.name}</CardDescription>}
+                      </div>
+                      <Badge variant={getBadgeVariant(project.status)}>
+                          <div className="flex items-center gap-2">
+                              {getStatusIcon(project.status)}
+                              {project.status}
+                          </div>
+                      </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm">{project.details}</p>
+                   {project.status === 'Rejected' && project.rejectionReason && (
+                    <Alert variant="destructive" className="mt-4">
+                      <AlertTitle>Rejection Reason</AlertTitle>
+                      <AlertDescription>{project.rejectionReason}</AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            )
+        })}
+        </div>
       )
     }
     return null;
@@ -163,14 +171,14 @@ export default function StudentProjectsPage() {
                     <Tooltip>
                         <TooltipTrigger className="w-full">
                             {/* The disabled button is wrapped for the tooltip to work */}
-                            <Button className="w-full" onClick={() => handleRegisterClick(subject)} disabled={userHasProject}>
+                            <Button className="w-full" onClick={() => handleRegisterClick(subject)} disabled={userHasActiveProject}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Register Project
                             </Button>
                         </TooltipTrigger>
-                        {userHasProject && (
+                        {userHasActiveProject && (
                             <TooltipContent>
-                                <p>You have already registered a project.</p>
+                                <p>You already have an active or pending project.</p>
                             </TooltipContent>
                         )}
                     </Tooltip>
@@ -194,19 +202,28 @@ export default function StudentProjectsPage() {
     <div className="flex flex-col gap-8">
        <PageHeader
         title="My Capstone Project"
-        description="Register your project for a subject or view your current registration."
+        description="Register your project for a subject or view your current registration status."
       />
       
-      {userHasProject ? (
+      {userHasActiveProject ? (
           <Alert>
             <AlertTitle>Project Registration Submitted</AlertTitle>
             <AlertDescription>
-                You have submitted a capstone project for approval. You can view its status below.
+                You have an active or pending capstone project. You can view its status below.
             </AlertDescription>
           </Alert>
-      ) : null}
+      ) : (
+        projects && projects.length > 0 && (
+            <Alert variant="destructive">
+                <AlertTitle>Project Rejected</AlertTitle>
+                <AlertDescription>
+                    Your previous project submission was rejected. Please review the feedback below and submit a new registration.
+                </AlertDescription>
+            </Alert>
+        )
+      )}
 
-      {renderMyProject()}
+      {renderMyProjects()}
       
       <div className="space-y-4">
         <h2 className="font-headline text-2xl font-bold">Available Subjects for Registration</h2>
