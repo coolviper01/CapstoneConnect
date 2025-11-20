@@ -23,7 +23,7 @@ import { TagInput } from '@/components/ui/tag-input';
 
 const formSchema = z.object({
   name: z.string().min(3, "Subject name must be at least 3 characters."),
-  yearLevel: z.string().min(3, "Year level must be at least 3 characters."),
+  yearLevel: z.string().min(1, "Year level is required."),
   academicYear: z.string().regex(/^\d{4}-\d{4}$/, "Academic year must be in YYYY-YYYY format."),
   semester: z.string().min(1, "Semester is required."),
   blocks: z.array(z.string()).min(1, "You must specify at least one block/section."),
@@ -121,7 +121,7 @@ export function CreateSubjectForm({ onFinished }: CreateSubjectFormProps) {
             <FormItem>
               <FormLabel>Year Level</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., 4th Year" {...field} />
+                <Input placeholder="e.g., 4" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -141,7 +141,7 @@ export function CreateSubjectForm({ onFinished }: CreateSubjectFormProps) {
                     />
                 </FormControl>
                 <FormDescription>
-                    List the class blocks or sections taking this subject (e.g., BSCS-4A, BSIT-4B).
+                    List the class blocks or sections taking this subject (e.g., 4A, 4B).
                 </FormDescription>
                 <FormMessage />
                 </FormItem>
