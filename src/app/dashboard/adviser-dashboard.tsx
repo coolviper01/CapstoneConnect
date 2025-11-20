@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown, Lock, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { useCollection, useFirestore, useMemoFirebase, useUser, addDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser, addDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import type { Consultation, CapstoneProject, Attendee, DiscussionPoint, Student, Advisor } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -383,14 +383,12 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
   }
 
   const firestore = useFirestore();
-  const { user } = useUser();
   
-  // Directly fetch advisor data here to pass to ConsultationDetail
-  const advisorQuery = useMemoFirebase(() => {
+  const advisorDocRef = useMemoFirebase(() => {
       if (!consultation.advisorId) return null;
       return doc(firestore, 'advisors', consultation.advisorId);
   }, [firestore, consultation.advisorId]);
-  const { data: advisor } = useCollection<Advisor>(advisorQuery as any);
+  const { data: advisor } = useDoc<Advisor>(advisorDocRef);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -618,6 +616,5 @@ export default function AdviserDashboard() {
     </div>
   );
 }
-
 
     
