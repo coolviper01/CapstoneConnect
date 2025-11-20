@@ -88,7 +88,7 @@ export default function RegisterPage() {
         redirectPath = '/student';
       } else if (role === 'Teacher') {
         collectionName = 'teachers';
-        redirectPath = '/teacher';
+        redirectPath = '/dashboard';
       }
       
       if (collectionName) {

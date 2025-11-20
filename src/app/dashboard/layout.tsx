@@ -1,14 +1,74 @@
+
+'use client';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { Home, CalendarPlus, LayoutDashboard } from "lucide-react";
+import { Home, CalendarPlus, LayoutDashboard, BookMarked } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 import Link from "next/link";
+import { useFirebase } from "@/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { user, firestore } = useFirebase();
+  const [isTeacher, setIsTeacher] = useState(false);
+
+  useEffect(() => {
+    if (user && firestore) {
+      const checkRole = async () => {
+        const teacherDoc = await getDoc(doc(firestore, "teachers", user.uid));
+        if (teacherDoc.exists()) {
+          setIsTeacher(true);
+        }
+      };
+      checkRole();
+    }
+  }, [user, firestore]);
+  
+  const menuItems = isTeacher ? (
+    <>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip="Dashboard">
+          <Link href="/dashboard">
+            <LayoutDashboard />
+            Dashboard
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip="Subjects">
+          <Link href="/dashboard/subjects">
+            <BookMarked />
+            Subjects
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </>
+  ) : (
+    <>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip="Dashboard">
+          <Link href="/dashboard">
+            <LayoutDashboard />
+            Dashboard
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip="Schedule Consultation">
+          <Link href="/dashboard/schedule">
+            <CalendarPlus />
+            Schedule
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </>
+  );
+
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -17,22 +77,7 @@ export default function DashboardLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Dashboard">
-                <Link href="/dashboard">
-                  <LayoutDashboard />
-                  Dashboard
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="Schedule Consultation">
-                <Link href="/dashboard/schedule">
-                  <CalendarPlus />
-                  Schedule
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {menuItems}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>

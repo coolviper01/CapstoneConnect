@@ -38,7 +38,7 @@ export default function LoginPage() {
       // Check user role and redirect
       const teacherDoc = await getDoc(doc(firestore, "teachers", user.uid));
       if (teacherDoc.exists()) {
-        router.push('/teacher');
+        router.push('/dashboard');
         return;
       }
 
