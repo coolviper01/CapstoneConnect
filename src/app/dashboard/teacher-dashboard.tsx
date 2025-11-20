@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { Check, X } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import type { CapstoneProject, Consultation, Advisor, Student } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -110,30 +110,51 @@ export default function TeacherDashboard() {
     };
 
     const handleApproveStudent = async (student: Student) => {
-        const studentRef = doc(firestore, 'students', student.id);
-        await updateDocumentNonBlocking(studentRef, { status: 'Active' });
+        if (!firestore) return;
+        const { id: toastId } = toast({ title: "Approving student..." });
+    
+        try {
+            const studentRef = doc(firestore, 'students', student.id);
+            const batch = writeBatch(firestore);
+            
+            batch.update(studentRef, { status: 'Active' });
 
-        // Post-approval logic: try to join project
-        if (student.subjectId && student.block && student.groupNumber) {
-             const projectsQuery = query(
-                collection(firestore, 'capstoneProjects'),
-                where('subjectId', '==', student.subjectId),
-                where('block', '==', student.block),
-                where('groupNumber', '==', student.groupNumber)
-            );
-            const projectSnapshot = await getDocs(projectsQuery);
-            if (!projectSnapshot.empty) {
-                const projectDoc = projectSnapshot.docs[0];
-                updateDocumentNonBlocking(projectDoc.ref, { studentIds: [...projectDoc.data().studentIds, student.id] });
-                 toast({ title: "Student Approved & Added to Project!", description: `${student.name} is now active and has been added to their group's project.` });
-            } else {
-                toast({ title: "Student Approved!", description: `${student.name} is now an active student.` });
+            let wasAddedToProject = false;
+    
+            // Post-approval logic: try to find and join an existing project
+            if (student.subjectId && student.block && student.groupNumber) {
+                const projectsQuery = query(
+                    collection(firestore, 'capstoneProjects'),
+                    where('subjectId', '==', student.subjectId),
+                    where('block', '==', student.block),
+                    where('groupNumber', '==', student.groupNumber)
+                );
+                const projectSnapshot = await getDocs(projectsQuery);
+                if (!projectSnapshot.empty) {
+                    const projectDoc = projectSnapshot.docs[0];
+                    // Add student to the project only if they aren't already in it
+                    if (!projectDoc.data().studentIds.includes(student.id)) {
+                        batch.update(projectDoc.ref, { 
+                            studentIds: [...projectDoc.data().studentIds, student.id] 
+                        });
+                        wasAddedToProject = true;
+                    }
+                }
             }
-        } else {
-             toast({ title: "Student Approved!", description: `${student.name} is now an active student.` });
+            
+            await batch.commit();
+
+            if (wasAddedToProject) {
+                toast({ id: toastId, title: "Student Approved & Added to Project!", description: `${student.name} is now active and has been added to their group's project.` });
+            } else {
+                toast({ id: toastId, title: "Student Approved!", description: `${student.name} is now an active student.` });
+            }
+        } catch (error) {
+            console.error("Failed to approve student:", error);
+            toast({ id: toastId, variant: 'destructive', title: "Approval Failed", description: "An error occurred while approving the student." });
+        } finally {
+            setStudentToApprove(null);
         }
-        
-        setStudentToApprove(null);
     };
 
 
@@ -372,5 +393,3 @@ export default function TeacherDashboard() {
         </div>
     );
 }
-
-    
