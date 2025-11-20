@@ -18,9 +18,11 @@ import {
 import { useFirebase } from "@/firebase"
 import { User, LogOut } from "lucide-react"
 import { Skeleton } from "./ui/skeleton";
+import { useRouter } from "next/navigation";
 
 export function UserNav() {
   const { user, isUserLoading, handleSignOut } = useFirebase();
+  const router = useRouter();
 
   if (isUserLoading) {
     return <Skeleton className="h-9 w-9 rounded-full" />;
@@ -35,6 +37,12 @@ export function UserNav() {
     if (user?.isAnonymous) return `UID: ${user.uid.substring(0, 8)}...`;
     return user?.email || 'No email';
   }
+
+  const performSignOut = () => {
+    handleSignOut().then(() => {
+      router.push('/');
+    });
+  };
 
   return (
     <DropdownMenu>
@@ -67,7 +75,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut}>
+        <DropdownMenuItem onClick={performSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
           Log out
         </DropdownMenuItem>

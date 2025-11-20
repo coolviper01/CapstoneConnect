@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -32,7 +33,7 @@ export interface FirebaseContextState {
   user: User | null;
   isUserLoading: boolean; // True during initial auth check
   userError: Error | null; // Error from auth listener
-  handleSignOut: () => void;
+  handleSignOut: () => Promise<void>;
 }
 
 // Return type for useFirebase()
@@ -43,7 +44,7 @@ export interface FirebaseServicesAndUser {
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
-  handleSignOut: () => void;
+  handleSignOut: () => Promise<void>;
 }
 
 // Return type for useUser() - specific to user auth state
