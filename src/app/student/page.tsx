@@ -73,7 +73,7 @@ export default function StudentDashboardPage() {
           </div>
         </CardHeader>
         <CardContent className="flex-1 space-y-3 text-sm">
-           {consultation.status === 'Scheduled' ? (
+           {consultation.status === 'Scheduled' || consultation.status === 'Completed' ? (
              <>
                 <div className="flex items-center gap-3">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -95,10 +95,10 @@ export default function StudentDashboardPage() {
             </div>
            )}
         </CardContent>
-        {consultation.status === 'Scheduled' && (
+        {(consultation.status === 'Scheduled' || consultation.status === 'Completed') && (
           <CardFooter>
             <Button asChild className="w-full" variant="secondary">
-              <Link href={`/dashboard/consultations/${consultation.id}`}>
+              <Link href={`/student/consultations/${consultation.id}`}>
                 View Details <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>

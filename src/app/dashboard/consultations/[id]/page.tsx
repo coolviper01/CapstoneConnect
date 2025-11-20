@@ -2,19 +2,18 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users, FileText } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, FileText, PlusCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import TalkingPoints from "./talking-points";
-import { useDoc, useFirestore, useMemoFirebase, setDocumentNonBlocking } from "@/firebase";
+import { useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
-import type { Consultation, Attendee, Student } from "@/lib/types";
+import type { Consultation, Attendee, Student, DiscussionPoint } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useState, useEffect, useCallback } from "react";
-import { debounce } from 'lodash';
+import React, { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ConsultationDetailPage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
@@ -22,58 +21,66 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
   const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", params.id), [firestore, params.id]);
   const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
   
-  const [notes, setNotes] = useState("");
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
 
   useEffect(() => {
     if (consultation) {
-      setNotes(consultation.notes || "");
-      // Ensure attendees is always an array
       setAttendees(Array.isArray(consultation.attendees) ? consultation.attendees : []);
+      setDiscussionPoints(Array.isArray(consultation.discussionPoints) ? consultation.discussionPoints : []);
     }
   }, [consultation]);
-
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
   }
 
-  // Debounced function to save notes to Firestore
-  const debouncedSaveNotes = useCallback(
-    debounce((newNotes: string) => {
-      if (consultationRef) {
-        // Use non-blocking update for better UX
-        setDocumentNonBlocking(consultationRef, { notes: newNotes }, { merge: true });
-      }
-    }, 1000), // 1-second debounce delay
-    [consultationRef]
-  );
-
-  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newNotes = e.target.value;
-    setNotes(newNotes);
-    debouncedSaveNotes(newNotes);
-  };
-  
   const handleSignatureChange = (studentId: string, signature: string) => {
-    setAttendees(prevAttendees => {
-        const newAttendees = [...prevAttendees];
-        const attendeeIndex = newAttendees.findIndex(a => a.studentId === studentId);
-        if (attendeeIndex > -1) {
-            newAttendees[attendeeIndex].signature = signature;
-        } else {
-            newAttendees.push({ studentId, signature });
-        }
-        return newAttendees;
-    });
+    const newAttendees = [...attendees];
+    const attendeeIndex = newAttendees.findIndex(a => a.studentId === studentId);
+    if (attendeeIndex > -1) {
+        newAttendees[attendeeIndex].signature = signature;
+    } else {
+        newAttendees.push({ studentId, signature });
+    }
+    setAttendees(newAttendees);
   };
 
   const saveAttendance = () => {
      if (consultationRef) {
-      setDocumentNonBlocking(consultationRef, { attendees: attendees }, { merge: true });
+      updateDocumentNonBlocking(consultationRef, { attendees: attendees });
       toast({ title: 'Attendance Saved!', description: 'The attendance record has been updated.' });
     }
   };
+  
+  const addDiscussionPoint = () => {
+    const newPoint: DiscussionPoint = {
+      id: new Date().toISOString(), // simple unique id
+      adviserComment: "",
+      status: 'To Do'
+    };
+    const newPoints = [...discussionPoints, newPoint];
+    setDiscussionPoints(newPoints);
+  }
+
+  const updateDiscussionPoint = (id: string, comment: string) => {
+    const newPoints = discussionPoints.map(p => p.id === id ? { ...p, adviserComment: comment } : p);
+    setDiscussionPoints(newPoints);
+  }
+
+  const removeDiscussionPoint = (id: string) => {
+    const newPoints = discussionPoints.filter(p => p.id !== id);
+    setDiscussionPoints(newPoints);
+    updateDocumentNonBlocking(consultationRef, { discussionPoints: newPoints });
+  }
+
+  const saveDiscussionPoints = () => {
+    if (consultationRef) {
+      updateDocumentNonBlocking(consultationRef, { discussionPoints: discussionPoints });
+      toast({ title: 'Discussion Points Saved!', description: 'Your comments have been updated.' });
+    }
+  }
+
 
   if (isLoading) {
     return (
@@ -148,19 +155,33 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
         <div className="md:col-span-2 flex flex-col gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Discussion Notes</CardTitle>
+              <CardTitle>Discussion Points</CardTitle>
               <CardDescription>
-                This editor is collaborative. Notes are saved automatically as you type.
+                Add comments and action items for the students. Changes are saved when you click the save button.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Textarea 
-                value={notes}
-                onChange={handleNotesChange}
-                className="min-h-[200px]" 
-                placeholder="Start typing notes here..." 
-              />
+            <CardContent className="space-y-4">
+              {discussionPoints.map((point, index) => (
+                <div key={point.id} className="flex items-start gap-2">
+                  <span className="font-bold text-muted-foreground pt-2">{index + 1}.</span>
+                  <Textarea 
+                    value={point.adviserComment}
+                    onChange={(e) => updateDiscussionPoint(point.id, e.target.value)}
+                    className="flex-1"
+                    placeholder="Enter discussion point or action item..."
+                  />
+                  <Button variant="ghost" size="icon" onClick={() => removeDiscussionPoint(point.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+               <Button variant="outline" onClick={addDiscussionPoint}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Point
+              </Button>
             </CardContent>
+             <CardFooter>
+              <Button onClick={saveDiscussionPoints}>Save Discussion Points</Button>
+            </CardFooter>
           </Card>
 
           <Card>

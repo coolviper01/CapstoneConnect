@@ -38,6 +38,13 @@ export type CapstoneProject = {
     rejectionReason?: string; // Optional field for feedback
 }
 
+export type DiscussionPoint = {
+  id: string;
+  adviserComment: string;
+  studentResponse?: string;
+  status: 'To Do' | 'On-going' | 'Done';
+}
+
 export type Consultation = {
   id: string;
   semester: string;
@@ -52,12 +59,11 @@ export type Consultation = {
   status: 'Pending Approval' | 'Scheduled' | 'Completed' | 'Cancelled';
   students?: Student[]; // Make optional to handle cases where it might not be populated
   advisor?: Advisor; // Make optional
-  notes?: string;
   attendees?: Attendee[];
+  discussionPoints?: DiscussionPoint[];
   // Firestore data types
   advisorId?: string;
   studentIds?: string[];
-  notesId?: string;
   capstoneProjectId?: string;
   agenda?: string; // New field for student to fill
 };
