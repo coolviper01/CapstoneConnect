@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
-import { ArrowRight, Calendar, Clock, MapPin } from "lucide-react";
+import { ArrowRight, Calendar, Clock, MapPin, BookOpenCheck } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
@@ -88,9 +88,15 @@ export default function StudentDashboardPage() {
     <div className="flex flex-col min-h-dvh bg-background">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4 sm:px-6">
         <Logo />
-        <div className="flex items-center gap-4 ml-auto">
+        <nav className="ml-auto flex items-center gap-4">
+           <Button variant="outline" asChild>
+            <Link href="/student/projects">
+                <BookOpenCheck className="mr-2 h-4 w-4" />
+                My Projects
+            </Link>
+           </Button>
           <UserNav />
-        </div>
+        </nav>
       </header>
       <main className="flex-1 p-4 sm:px-6 sm:py-8">
         <PageHeader title="My Consultations" description="Here are your upcoming capstone consultations." />

@@ -1,0 +1,171 @@
+'use client';
+
+import { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
+import { PlusCircle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import type { Subject, CapstoneProject } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { RegisterProjectForm } from './register-project-form';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+export default function StudentProjectsPage() {
+  const [isRegisterDialogOpen, setRegisterDialogOpen] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const subjectsQuery = useMemoFirebase(
+    () => collection(firestore, "subjects"),
+    [firestore]
+  );
+  const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
+
+  const projectsQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, "capstoneProjects"), where("studentIds", "array-contains", user.uid)) : null,
+    [firestore, user]
+  );
+  const { data: projects, isLoading: isLoadingProjects } = useCollection<CapstoneProject>(projectsQuery);
+  
+  const handleRegisterClick = (subject: Subject) => {
+    setSelectedSubject(subject);
+    setRegisterDialogOpen(true);
+  };
+  
+  const userHasProject = projects && projects.length > 0;
+
+  const renderMyProject = () => {
+    if (isLoadingProjects || isUserLoading) {
+      return <Card><CardHeader><Skeleton className="h-6 w-3/4 mb-2" /></CardHeader><CardContent><Skeleton className="h-20 w-full" /></CardContent></Card>
+    }
+    if (userHasProject && projects) {
+      const project = projects[0];
+       const subject = subjects?.find(s => s.id === project.subjectId);
+      return (
+        <Card className="bg-primary/5 border-primary">
+          <CardHeader>
+            <CardTitle>{project.title}</CardTitle>
+            {subject && <CardDescription>Registered under: {subject.name}</CardDescription>}
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{project.details}</p>
+          </CardContent>
+        </Card>
+      )
+    }
+    return null;
+  }
+  
+  const renderAvailableSubjects = () => {
+     if (isLoadingSubjects) {
+      return (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-1/2" /></CardHeader>
+              <CardContent><Skeleton className="h-8 w-full" /></CardContent>
+              <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+    
+    if (!subjects || subjects.length === 0) {
+      return (
+         <div className="border rounded-lg p-8 text-center text-muted-foreground">
+          <p>No subjects are available for registration yet. Check back later.</p>
+        </div>
+      )
+    }
+    
+    return (
+       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {subjects.map(subject => (
+           <Card key={subject.id}>
+            <CardHeader>
+                <CardTitle>{subject.name}</CardTitle>
+                <CardDescription>{subject.yearLevel}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {subject.blocks.map(block => (
+                  <Badge key={block} variant="secondary">{block}</Badge>
+                ))}
+              </div>
+            </CardContent>
+            <CardFooter>
+                <Button className="w-full" onClick={() => handleRegisterClick(subject)} disabled={userHasProject}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Register Project
+                </Button>
+            </CardFooter>
+          </Card>
+        ))}
+       </div>
+    );
+  }
+
+  if (isUserLoading) {
+     return <Skeleton className="h-96 w-full" />
+  }
+
+  if (!user) {
+    return <div>You must be logged in to view this page.</div>;
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+       <PageHeader
+        title="My Capstone Project"
+        description="Register your project for a subject or view your current registration."
+      />
+      
+      {userHasProject ? (
+          <Alert>
+            <AlertTitle>Project Already Registered</AlertTitle>
+            <AlertDescription>
+                You have already registered a capstone project. You can view its details below.
+            </AlertDescription>
+          </Alert>
+      ) : null}
+
+      {renderMyProject()}
+      
+      <div className="space-y-4">
+        <h2 className="font-headline text-2xl font-bold">Available Subjects</h2>
+        {renderAvailableSubjects()}
+      </div>
+
+      {selectedSubject && (
+        <Dialog open={isRegisterDialogOpen} onOpenChange={setRegisterDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Register Project for {selectedSubject.name}</DialogTitle>
+              <DialogDescription>
+                Fill out the details below to register your capstone project.
+              </DialogDescription>
+            </DialogHeader>
+            <RegisterProjectForm 
+                subject={selectedSubject} 
+                studentId={user.uid} 
+                onFinished={() => setRegisterDialogOpen(false)} 
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
