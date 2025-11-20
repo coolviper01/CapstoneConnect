@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -25,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, useCollection, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
+import { useAuth, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Subject, CapstoneProject } from '@/lib/types';
@@ -43,6 +42,18 @@ export default function StudentGroupDetailsPage() {
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      if (user) {
+        setIsAuthReady(true);
+      } else {
+        router.push('/register/student');
+      }
+    });
+    return () => unsubscribe();
+  }, [auth, router]);
 
   const subjectsQuery = useMemoFirebase(() => collection(firestore, 'subjects'), [firestore]);
   const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
@@ -81,6 +92,22 @@ export default function StudentGroupDetailsPage() {
             status: "Pending Approval",
         });
 
+        const capstoneQuery = query(
+            collection(firestore, 'capstoneProjects'),
+            where('subjectId', '==', values.subjectId),
+            where('block', '==', values.block),
+            where('groupNumber', '==', values.groupNumber)
+        );
+        
+        const querySnapshot = await getDocs(capstoneQuery);
+        if (!querySnapshot.empty) {
+            const projectDoc = querySnapshot.docs[0];
+            await updateDoc(projectDoc.ref, {
+                studentIds: arrayUnion(user.uid)
+            });
+        }
+
+
         toast({
             title: 'Registration Submitted!',
             description: 'Your registration is now pending approval from your teacher.',
@@ -99,11 +126,10 @@ export default function StudentGroupDetailsPage() {
     }
   };
 
-  if (!auth.currentUser) {
+  if (!isAuthReady) {
       return (
           <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
-              <p className='mb-4'>You need to create an account first.</p>
-              <Button onClick={() => router.push('/register/student')}>Go to Registration</Button>
+              <p>Loading...</p>
           </div>
       );
   }
