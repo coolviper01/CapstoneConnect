@@ -54,8 +54,8 @@ export default function Home() {
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <Button asChild size="lg">
-                  <Link href="/dashboard">
-                    Adviser Dashboard
+                  <Link href="/login">
+                    Adviser Login
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
