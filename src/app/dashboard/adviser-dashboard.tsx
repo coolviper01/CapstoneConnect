@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown, Lock } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import type { Consultation, CapstoneProject, Attendee, DiscussionPoint, Student } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -90,7 +90,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
         }
     };
 
-    const handleUpdateReview = (pointId: string, status: 'Approved' | 'Rejected') => {
+    const handleUpdateReview = async (pointId: string, status: 'Approved' | 'Rejected') => {
         const newPoints = discussionPoints.map(p => {
             if (p.id === pointId) {
                 return { ...p, studentUpdateStatus: status, adviserFeedback: status === 'Approved' ? '' : p.adviserFeedback };
@@ -98,12 +98,12 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
             return p;
         });
         setDiscussionPoints(newPoints);
-        updateDocumentNonBlocking(consultationRef, { discussionPoints: newPoints });
+        await updateDoc(consultationRef, { discussionPoints: newPoints });
         toast({ title: `Update ${status}`, description: `The student's update has been marked as ${status.toLowerCase()}.` });
     };
 
-    const handleRejectWithReason = () => {
-        if (!rejectionPoint || !rejectionReason) return;
+    const handleRejectWithReason = async () => {
+        if (!rejectionPoint || !rejectionReason || !consultationRef) return;
 
         const newPoints = discussionPoints.map(p => {
             if (p.id === rejectionPoint.id) {
@@ -113,7 +113,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
         });
 
         setDiscussionPoints(newPoints);
-        updateDocumentNonBlocking(consultationRef, { discussionPoints: newPoints });
+        await updateDoc(consultationRef, { discussionPoints: newPoints });
         toast({ title: `Update Rejected`, description: `The student's update has been rejected with feedback.` });
         setRejectionPoint(null);
         setRejectionReason("");
@@ -372,10 +372,12 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
             <Button className="w-full" variant="secondary"><FileText className="mr-2 h-4 w-4" />{open ? 'Hide Details' : 'View Details'}</Button>
           </CollapsibleTrigger>
         </CardFooter>
-        <CollapsibleContent>
-           {open && <ConsultationDetail consultation={consultation} />}
-        </CollapsibleContent>
       </Card>
+      {open && 
+        <CollapsibleContent>
+            <ConsultationDetail consultation={consultation} />
+        </CollapsibleContent>
+      }
     </Collapsible>
   )
 }
@@ -574,3 +576,5 @@ export default function AdviserDashboard() {
     </div>
   );
 }
+
+    
