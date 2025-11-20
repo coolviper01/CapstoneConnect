@@ -3,11 +3,11 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown, Lock } from 'lucide-react';
+import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown, Lock, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
-import type { Consultation, CapstoneProject, Attendee, DiscussionPoint, Student } from '@/lib/types';
+import type { Consultation, CapstoneProject, Attendee, DiscussionPoint, Student, Advisor } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
@@ -22,9 +22,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import QRCode from "react-qr-code";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ConsultationReport } from './consultation-report';
 
 
-function ConsultationDetail({ consultation }: { consultation: Consultation }) {
+function ConsultationDetail({ consultation, advisor }: { consultation: Consultation, advisor?: Advisor }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", consultation.id), [firestore, consultation.id]);
@@ -39,6 +40,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
     const [rejectionPoint, setRejectionPoint] = useState<DiscussionPoint | null>(null);
     const [rejectionReason, setRejectionReason] = useState("");
+    const [isReportOpen, setReportOpen] = useState(false);
 
     useEffect(() => {
         if (consultation) {
@@ -143,6 +145,8 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     };
 
     const hasPendingUpdates = discussionPoints.some(p => p.studentUpdateStatus === 'Pending');
+    const isConsultationClosed = consultation.status === 'Completed';
+
 
     return (
         <div className="grid md:grid-cols-3 gap-6 pt-6">
@@ -184,7 +188,8 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                         <CardDescription>Manage student check-in for this session.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="bg-muted p-4 rounded-lg flex flex-col items-center gap-4">
+                       {!isConsultationClosed && (
+                         <div className="bg-muted p-4 rounded-lg flex flex-col items-center gap-4">
                             {consultation.isAttendanceOpen && consultation.attendanceCode && (
                                 <>
                                     <div style={{ height: "auto", margin: "0 auto", maxWidth: 128, width: "100%" }}>
@@ -205,6 +210,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                                 {consultation.isAttendanceOpen ? <><Square className="mr-2 h-4 w-4"/>Stop Attendance</> : <><Play className="mr-2 h-4 w-4"/>Start Attendance</>}
                             </Button>
                         </div>
+                       )}
                         <div className="space-y-2">
                             <h4 className="font-medium">Present Students</h4>
                             {isLoadingStudents && <Skeleton className="h-10 w-full" />}
@@ -236,19 +242,24 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                 <Card>
                     <CardHeader>
                         <CardTitle className="font-semibold">Discussion Points</CardTitle>
-                        <CardDescription>Add comments and action items for the students. Review their updates here.</CardDescription>
+                         { !isConsultationClosed ? (
+                            <CardDescription>Add comments and action items for the students. Review their updates here.</CardDescription>
+                         ) : (
+                            <CardDescription>This consultation is closed. View the summary below.</CardDescription>
+                         )}
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {discussionPoints.map((point, index) => (
                             <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
                                 <span className="font-bold text-muted-foreground pt-2">{index + 1}.</span>
                                 <div className="flex-1 grid gap-3">
-                                    <Textarea value={point.adviserComment} onChange={(e) => updateDiscussionPoint(point.id, e.target.value)} className="flex-1" placeholder="Enter discussion point or action item..." />
+                                    <Textarea value={point.adviserComment} onChange={(e) => updateDiscussionPoint(point.id, e.target.value)} className="flex-1" placeholder="Enter discussion point or action item..." readOnly={isConsultationClosed} />
                                      <div className='flex items-center gap-2'>
                                         <span className="text-xs font-semibold text-muted-foreground">CATEGORY</span>
                                         <Select
                                             value={point.category}
                                             onValueChange={(value: 'Documentation' | 'Prototype') => updateDiscussionPointCategory(point.id, value)}
+                                            disabled={isConsultationClosed}
                                         >
                                             <SelectTrigger className="w-[180px] h-8 text-xs">
                                                 <SelectValue placeholder="Set category" />
@@ -267,7 +278,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                                             </div>
                                             <p className="text-sm whitespace-pre-wrap">{point.studentResponse}</p>
                                             
-                                            {point.studentUpdateStatus === 'Pending' && (
+                                            {point.studentUpdateStatus === 'Pending' && !isConsultationClosed && (
                                                 <div className="flex justify-end gap-2 pt-2 border-t">
                                                     <Button size="sm" variant="outline" onClick={() => setRejectionPoint(point)}><X className="mr-2 h-4 w-4" /> Reject</Button>
                                                     <Button size="sm" onClick={() => handleUpdateReview(point.id, 'Approved')}><Check className="mr-2 h-4 w-4" /> Approve</Button>
@@ -283,18 +294,18 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                                         </div>
                                      )}
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => removeDiscussionPoint(point.id)}><Trash2 className="h-4 w-4" /></Button>
+                                {!isConsultationClosed && <Button variant="ghost" size="icon" onClick={() => removeDiscussionPoint(point.id)}><Trash2 className="h-4 w-4" /></Button>}
                             </div>
                         ))}
-                        <Button variant="outline" onClick={addDiscussionPoint}><PlusCircle className="mr-2 h-4 w-4" /> Add Point</Button>
+                         {!isConsultationClosed && <Button variant="outline" onClick={addDiscussionPoint}><PlusCircle className="mr-2 h-4 w-4" /> Add Point</Button>}
                     </CardContent>
                     <CardFooter className='flex justify-between'>
-                        <Button onClick={saveDiscussionPoints}>Save Discussion Points</Button>
-                        {consultation.status === 'Scheduled' && (
-                             <TooltipProvider>
+                       {!isConsultationClosed ? (
+                         <>
+                            <Button onClick={saveDiscussionPoints}>Save Discussion Points</Button>
+                            <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        {/* This div is necessary for the tooltip to work on a disabled button */}
                                         <div>
                                             <Button
                                                 variant="destructive"
@@ -312,7 +323,10 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                                     )}
                                 </Tooltip>
                             </TooltipProvider>
-                        )}
+                         </>
+                       ) : (
+                          <Button onClick={() => setReportOpen(true)}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
+                       )}
                     </CardFooter>
                 </Card>
             </div>
@@ -334,6 +348,18 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            
+            <Dialog open={isReportOpen} onOpenChange={setReportOpen}>
+                <DialogContent className="max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Consultation Report</DialogTitle>
+                        <DialogDescription>
+                            This is a printable summary of the completed consultation.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {advisor && <ConsultationReport consultation={consultation} advisor={advisor} />}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -349,6 +375,16 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
         default: return 'secondary';
     }
   }
+
+  const firestore = useFirestore();
+  const { user } = useUser();
+  
+  // Directly fetch advisor data here to pass to ConsultationDetail
+  const advisorQuery = useMemoFirebase(() => {
+      if (!consultation.advisorId) return null;
+      return doc(firestore, 'advisors', consultation.advisorId);
+  }, [firestore, consultation.advisorId]);
+  const { data: advisor } = useCollection<Advisor>(advisorQuery as any);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -375,7 +411,7 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
       </Card>
       {open && 
         <CollapsibleContent>
-            <ConsultationDetail consultation={consultation} />
+            <ConsultationDetail consultation={consultation} advisor={advisor} />
         </CollapsibleContent>
       }
     </Collapsible>
@@ -577,4 +613,3 @@ export default function AdviserDashboard() {
   );
 }
 
-    
