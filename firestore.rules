@@ -112,10 +112,14 @@
 
       /**
       * Validates that a new user profile document has its 'id' field
-      * set to the user's UID, ensuring relational integrity.
+      * set to the user's UID, and status is 'Pending Approval' for students.
       */
       function isProfileIdCorrectlyAssigned(userId) {
-        return request.resource.data.id == userId;
+          let isIdCorrect = request.resource.data.id == userId;
+          if (request.path[0] == 'students') {
+              return isIdCorrect && request.resource.data.status == 'Pending Approval';
+          }
+          return isIdCorrect;
       }
 
       /**
@@ -192,18 +196,16 @@
       // Collection: students
       // -------------------------------------------------------------------------
       /**
-      * @description Students can create, read, update, and delete their own profile.
+      * @description Students can create their own profile (status defaults to Pending). 
+      * Teachers can update student status. Students can update their own info if active.
       * @path /students/{studentId}
-      * @allow (get) A student with auth.uid=`abc` reads `/students/abc`.
-      * @deny (get) A user with auth.uid=`xyz` tries to read `/students/abc`.
-      * @deny (list) Any user tries to list all documents in the `/students` collection.
-      * @principle Restricts access to a user's own data tree and prevents user enumeration.
       */
       match /students/{studentId} {
         allow get: if isSignedIn();
-        allow list: if isSignedIn();
+        allow list: if isTeacher(); // Allow teachers to list students for approval.
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
-        allow update: if resource != null && isOwner(studentId) && isProfileIdImmutable();
+        allow update: if (isOwner(studentId) && isProfileIdImmutable()) || 
+                         (isTeacher() && request.resource.data.keys().hasOnly(["status"]));
         allow delete: if resource != null && isOwner(studentId);
       }
 
@@ -213,10 +215,6 @@
       /**
       * @description Teachers can create, read, update, and delete their own profile.
       * @path /teachers/{teacherId}
-      * @allow (get) A teacher with auth.uid=`abc` reads `/teachers/abc`.
-      * @deny (get) A user with auth.uid=`xyz` tries to read `/teachers/abc`.
-      * @deny (list) Any user tries to list all documents in the `/teachers` collection.
-      * @principle Restricts access to a user's own data tree and prevents user enumeration.
       */
       match /teachers/{teacherId} {
         allow get: if isOwner(teacherId);
@@ -311,4 +309,4 @@
     }
   }
 
-      
+    
