@@ -8,25 +8,28 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import TalkingPoints from "./talking-points";
-import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
-import { doc, setDoc } from "firebase/firestore";
-import type { Consultation, Attendee } from "@/lib/types";
+import { useDoc, useFirestore, useMemoFirebase, setDocumentNonBlocking } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { Consultation, Attendee, Student } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useState, useEffect, useCallback } from "react";
 import { debounce } from 'lodash';
+import { useToast } from "@/hooks/use-toast";
 
 export default function ConsultationDetailPage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
+  const { toast } = useToast();
   const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", params.id), [firestore, params.id]);
   const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
   
-  const [notes, setNotes] = useState(consultation?.notes || "");
-  const [attendees, setAttendees] = useState<Attendee[]>(consultation?.attendees || []);
+  const [notes, setNotes] = useState("");
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
 
   useEffect(() => {
     if (consultation) {
       setNotes(consultation.notes || "");
-      setAttendees(consultation.attendees || []);
+      // Ensure attendees is always an array
+      setAttendees(Array.isArray(consultation.attendees) ? consultation.attendees : []);
     }
   }, [consultation]);
 
@@ -39,9 +42,8 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
   const debouncedSaveNotes = useCallback(
     debounce((newNotes: string) => {
       if (consultationRef) {
-        setDoc(consultationRef, { notes: newNotes }, { merge: true }).catch(error => {
-          console.error("Error updating notes:", error);
-        });
+        // Use non-blocking update for better UX
+        setDocumentNonBlocking(consultationRef, { notes: newNotes }, { merge: true });
       }
     }, 1000), // 1-second debounce delay
     [consultationRef]
@@ -54,21 +56,22 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
   };
   
   const handleSignatureChange = (studentId: string, signature: string) => {
-    const newAttendees = [...attendees];
-    const attendeeIndex = newAttendees.findIndex(a => a.studentId === studentId);
-    if (attendeeIndex > -1) {
-      newAttendees[attendeeIndex].signature = signature;
-    } else {
-      newAttendees.push({ studentId, signature });
-    }
-    setAttendees(newAttendees);
+    setAttendees(prevAttendees => {
+        const newAttendees = [...prevAttendees];
+        const attendeeIndex = newAttendees.findIndex(a => a.studentId === studentId);
+        if (attendeeIndex > -1) {
+            newAttendees[attendeeIndex].signature = signature;
+        } else {
+            newAttendees.push({ studentId, signature });
+        }
+        return newAttendees;
+    });
   };
 
   const saveAttendance = () => {
      if (consultationRef) {
-      setDoc(consultationRef, { attendees: attendees }, { merge: true }).catch(error => {
-          console.error("Error updating attendance:", error);
-      });
+      setDocumentNonBlocking(consultationRef, { attendees: attendees }, { merge: true });
+      toast({ title: 'Attendance Saved!', description: 'The attendance record has been updated.' });
     }
   };
 
@@ -93,6 +96,8 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
   if (!consultation) {
     notFound();
   }
+  
+  const studentList: Student[] = Array.isArray(consultation.students) ? consultation.students : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -113,25 +118,27 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
             <CardContent className="space-y-4 text-sm">
               <div className="flex items-center gap-3">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span>{new Date(consultation.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span>{consultation.date ? new Date(consultation.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : "Not Scheduled"}</span>
               </div>
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>{consultation.startTime} - {consultation.endTime}</span>
+                <span>{consultation.startTime && consultation.endTime ? `${consultation.startTime} - ${consultation.endTime}` : 'Not Scheduled'}</span>
               </div>
               <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{consultation.venue}</span>
+                <span>{consultation.venue || 'Not Scheduled'}</span>
               </div>
-              <div className="flex items-start gap-3">
-                <Users className="h-4 w-4 text-muted-foreground mt-1" />
-                <div>
-                  <p className="font-medium">Students</p>
-                  <ul className="text-muted-foreground">
-                    {consultation.students.map(s => <li key={s.id}>{s.name}</li>)}
-                  </ul>
+              {studentList.length > 0 && (
+                 <div className="flex items-start gap-3">
+                    <Users className="h-4 w-4 text-muted-foreground mt-1" />
+                    <div>
+                    <p className="font-medium">Students</p>
+                    <ul className="text-muted-foreground">
+                        {studentList.map(s => <li key={s.id}>{s.name}</li>)}
+                    </ul>
+                    </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
           
@@ -143,7 +150,7 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
             <CardHeader>
               <CardTitle>Discussion Notes</CardTitle>
               <CardDescription>
-                Notes are saved automatically as you type.
+                This editor is collaborative. Notes are saved automatically as you type.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -159,10 +166,10 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
           <Card>
             <CardHeader>
               <CardTitle>Attendance</CardTitle>
-              <CardDescription>Record attendance with digital signatures.</CardDescription>
+              <CardDescription>Record attendance by having students type their name to sign.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {consultation.students.map(student => (
+              {studentList.map(student => (
                 <div key={student.id} className="flex items-center gap-4">
                   <Avatar>
                     <AvatarImage src={student.avatarUrl} alt={student.name} />
@@ -187,3 +194,4 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
     </div>
   );
 }
+    

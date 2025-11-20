@@ -2,7 +2,7 @@
 export type Student = {
   id: string;
   name: string;
-  avatarUrl: string;
+  avatarUrl?: string; // Made optional as it might not always exist
 };
 
 export type Advisor = {
@@ -50,8 +50,8 @@ export type Consultation = {
   venue?: string; // Optional for pending requests
   projectDetails: string;
   status: 'Pending Approval' | 'Scheduled' | 'Completed' | 'Cancelled';
-  students: Student[];
-  advisor: Advisor;
+  students?: Student[]; // Make optional to handle cases where it might not be populated
+  advisor?: Advisor; // Make optional
   notes?: string;
   attendees?: Attendee[];
   // Firestore data types
@@ -61,3 +61,5 @@ export type Consultation = {
   capstoneProjectId?: string;
   agenda?: string; // New field for student to fill
 };
+
+    
