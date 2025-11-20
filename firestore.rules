@@ -171,7 +171,7 @@
       * @principle Restricts access to a user's own data tree and prevents user enumeration.
       */
       match /advisors/{advisorId} {
-        allow get: if isOwner(advisorId) || isSignedIn(); // Allow others to read for selection.
+        allow get: if isSignedIn();
         allow list: if isSignedIn();
         allow create: if isOwner(advisorId) && isProfileIdCorrectlyAssigned(advisorId);
         allow update: if resource != null && isOwner(advisorId) && isProfileIdImmutable();
