@@ -171,7 +171,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="bg-muted p-4 rounded-lg flex flex-col items-center gap-4">
-                            {consultation.attendanceCode && (
+                            {consultation.isAttendanceOpen && consultation.attendanceCode && (
                                 <>
                                     <div style={{ height: "auto", margin: "0 auto", maxWidth: 128, width: "100%" }}>
                                         <QRCode
@@ -517,5 +517,3 @@ export default function AdviserDashboard() {
     </div>
   );
 }
-
-    
