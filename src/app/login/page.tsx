@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/firebase";
+import { useAuth, useFirestore } from "@/firebase";
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
@@ -24,14 +25,44 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Check user role and redirect
+      const teacherDoc = await getDoc(doc(firestore, "teachers", user.uid));
+      if (teacherDoc.exists()) {
+        router.push('/teacher');
+        return;
+      }
+
+      const advisorDoc = await getDoc(doc(firestore, "advisors", user.uid));
+      if (advisorDoc.exists()) {
+        router.push('/dashboard');
+        return;
+      }
+
+      const studentDoc = await getDoc(doc(firestore, "students", user.uid));
+      if (studentDoc.exists()) {
+        router.push('/student');
+        return;
+      }
+      
+      // Fallback if role not found
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Could not determine your user role.",
+      });
+      auth.signOut();
+
+
     } catch (error: any) {
       console.error(error);
       toast({
