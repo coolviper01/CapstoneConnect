@@ -1,9 +1,10 @@
+
 'use client';
 import { useParams } from "next/navigation";
 import Link from 'next/link';
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users, FileText, Code, QrCode, ScanLine, CheckCircle, AlertTriangle } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, FileText, Code, QrCode, ScanLine, CheckCircle, AlertTriangle, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from "@/firebase";
 import { collection, doc, query, where, arrayUnion } from "firebase/firestore";
@@ -48,7 +49,7 @@ function AttendanceScanner({ onCodeScanned, onClose }: { onCodeScanned: (code: s
       };
     }
   }, [webcamRef, onCodeScanned, onClose]);
-
+  
   useEffect(() => {
     const getCameraPermission = async () => {
       try {
@@ -134,7 +135,7 @@ export default function StudentConsultationDetailPage() {
   }, [consultation]);
 
   const updateDiscussionPoint = (id: string, response: string) => {
-    const newPoints = discussionPoints.map(p => p.id === id ? { ...p, studentResponse: response } : p);
+    const newPoints = discussionPoints.map(p => p.id === id ? { ...p, studentResponse: response, studentUpdateStatus: 'Pending' as const } : p);
     setDiscussionPoints(newPoints);
   }
 
@@ -146,7 +147,7 @@ export default function StudentConsultationDetailPage() {
   const saveUpdates = () => {
     if (consultationRef) {
       updateDocumentNonBlocking(consultationRef, { discussionPoints: discussionPoints });
-      toast({ title: 'Updates Saved!', description: 'Your responses have been saved.' });
+      toast({ title: 'Updates Saved!', description: 'Your responses have been saved and sent for adviser review.' });
     }
   }
   
@@ -185,6 +186,19 @@ export default function StudentConsultationDetailPage() {
         return 'outline';
     }
   };
+
+  const getUpdateStatusBadgeVariant = (status: DiscussionPoint['studentUpdateStatus']) => {
+    switch (status) {
+        case 'Approved':
+            return 'default';
+        case 'Pending':
+            return 'secondary';
+        case 'Rejected':
+            return 'destructive';
+        default:
+            return 'outline';
+    }
+  };
   
   const getCategoryIcon = (category: DiscussionPoint['category']) => {
     switch(category) {
@@ -216,7 +230,7 @@ export default function StudentConsultationDetailPage() {
   if (!consultation || error) {
     return (
         <div className="flex flex-col gap-6 items-center">
-            <PageHeader title="Consultation Not Found" description="We couldn't find the consultation you're looking for." />
+            <PageHeader title="Consultation Not Found" />
              <Alert variant="destructive" className="max-w-lg">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Error 404</AlertTitle>
@@ -335,10 +349,18 @@ export default function StudentConsultationDetailPage() {
                    
                    <div className="grid gap-2">
                      <label className="text-sm font-semibold">Your Response / Update</label>
+                     {point.studentUpdateStatus === 'Rejected' && point.adviserFeedback && (
+                        <Alert variant="destructive">
+                            <Lightbulb className="h-4 w-4" />
+                            <AlertTitle>Adviser Feedback</AlertTitle>
+                            <AlertDescription>{point.adviserFeedback}</AlertDescription>
+                        </Alert>
+                     )}
                      <Textarea 
                        value={point.studentResponse || ""}
                        onChange={(e) => updateDiscussionPoint(point.id, e.target.value)}
                        placeholder="Describe the activity you made or provide an update..."
+                       readOnly={point.studentUpdateStatus === 'Approved' || point.studentUpdateStatus === 'Pending'}
                      />
                    </div>
                    
@@ -359,7 +381,14 @@ export default function StudentConsultationDetailPage() {
                             </SelectContent>
                         </Select>
                      </div>
-                      <Badge variant={getStatusBadgeVariant(point.status)} className="mt-auto">{point.status}</Badge>
+                      <div className="flex flex-col items-end gap-2">
+                        {point.studentUpdateStatus && (
+                            <Badge variant={getUpdateStatusBadgeVariant(point.studentUpdateStatus)}>
+                                Update: {point.studentUpdateStatus}
+                            </Badge>
+                        )}
+                        <Badge variant={getStatusBadgeVariant(point.status)}>{point.status}</Badge>
+                      </div>
                    </div>
                 </div>
               )) : (
@@ -368,7 +397,7 @@ export default function StudentConsultationDetailPage() {
             </CardContent>
             {(discussionPoints && discussionPoints.length > 0) && (
               <CardFooter>
-                <Button onClick={saveUpdates}>Save My Updates</Button>
+                <Button onClick={saveUpdates}>Save & Submit Updates</Button>
               </CardFooter>
             )}
           </Card>

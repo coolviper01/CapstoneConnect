@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -20,6 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import QRCode from "react-qr-code";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     const firestore = useFirestore();
@@ -34,6 +35,8 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
 
     const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
+    const [rejectionPoint, setRejectionPoint] = useState<DiscussionPoint | null>(null);
+    const [rejectionReason, setRejectionReason] = useState("");
 
     useEffect(() => {
         if (consultation) {
@@ -82,6 +85,48 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                 title: newStatus ? 'Attendance Started!' : 'Attendance Stopped!', 
                 description: newStatus ? 'Students can now check in.' : 'Students can no longer check in.' 
             });
+        }
+    };
+
+    const handleUpdateReview = (pointId: string, status: 'Approved' | 'Rejected') => {
+        const newPoints = discussionPoints.map(p => {
+            if (p.id === pointId) {
+                return { ...p, studentUpdateStatus: status, adviserFeedback: status === 'Approved' ? '' : p.adviserFeedback };
+            }
+            return p;
+        });
+        setDiscussionPoints(newPoints);
+        updateDocumentNonBlocking(consultationRef, { discussionPoints: newPoints });
+        toast({ title: `Update ${status}`, description: `The student's update has been marked as ${status.toLowerCase()}.` });
+    };
+
+    const handleRejectWithReason = () => {
+        if (!rejectionPoint || !rejectionReason) return;
+
+        const newPoints = discussionPoints.map(p => {
+            if (p.id === rejectionPoint.id) {
+                return { ...p, studentUpdateStatus: 'Rejected' as const, adviserFeedback: rejectionReason };
+            }
+            return p;
+        });
+
+        setDiscussionPoints(newPoints);
+        updateDocumentNonBlocking(consultationRef, { discussionPoints: newPoints });
+        toast({ title: `Update Rejected`, description: `The student's update has been rejected with feedback.` });
+        setRejectionPoint(null);
+        setRejectionReason("");
+    };
+
+    const getStatusBadgeVariant = (status: DiscussionPoint['studentUpdateStatus']) => {
+        switch (status) {
+          case 'Approved':
+            return 'default';
+          case 'Pending':
+            return 'secondary';
+          case 'Rejected':
+            return 'destructive';
+          default:
+            return 'outline';
         }
     };
 
@@ -175,7 +220,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
             </div>
             <div className="md:col-span-2 flex flex-col gap-6">
                 <Card>
-                    <CardHeader><CardTitle className="font-semibold">Discussion Points</CardTitle><CardDescription>Add comments and action items for the students.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle className="font-semibold">Discussion Points</CardTitle><CardDescription>Add comments and action items for the students. Review their updates here.</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                         {discussionPoints.map((point, index) => (
                             <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
@@ -197,6 +242,27 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                                             </SelectContent>
                                         </Select>
                                      </div>
+                                     {point.studentResponse && (
+                                        <div className='bg-muted/50 p-3 rounded-md'>
+                                            <div className='flex justify-between items-center mb-2'>
+                                                <h4 className="font-semibold text-sm">Student's Update</h4>
+                                                {point.studentUpdateStatus && <Badge variant={getStatusBadgeVariant(point.studentUpdateStatus)}>{point.studentUpdateStatus}</Badge>}
+                                            </div>
+                                            <p className="text-sm whitespace-pre-wrap">{point.studentResponse}</p>
+                                            {point.studentUpdateStatus === 'Pending' && (
+                                                <div className="flex justify-end gap-2 mt-3">
+                                                    <Button size="sm" variant="outline" onClick={() => setRejectionPoint(point)}><ThumbsDown className="mr-2 h-4 w-4" />Reject</Button>
+                                                    <Button size="sm" onClick={() => handleUpdateReview(point.id, 'Approved')}><ThumbsUp className="mr-2 h-4 w-4" />Approve</Button>
+                                                </div>
+                                            )}
+                                            {point.studentUpdateStatus === 'Rejected' && point.adviserFeedback && (
+                                                <Alert variant="destructive" className="mt-3">
+                                                    <AlertTitle>Rejection Feedback</AlertTitle>
+                                                    <AlertDescription>{point.adviserFeedback}</AlertDescription>
+                                                </Alert>
+                                            )}
+                                        </div>
+                                     )}
                                 </div>
                                 <Button variant="ghost" size="icon" onClick={() => removeDiscussionPoint(point.id)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
@@ -206,6 +272,24 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                     <CardFooter><Button onClick={saveDiscussionPoints}>Save Discussion Points</Button></CardFooter>
                 </Card>
             </div>
+            
+            <AlertDialog open={!!rejectionPoint} onOpenChange={() => setRejectionPoint(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Reject Student Update?</AlertDialogTitle>
+                        <AlertDialogDescription>Please provide a reason for rejecting this update. This will be shown to the student.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <Textarea
+                        placeholder="e.g., The implementation is incomplete, please fix..."
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                    />
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRejectWithReason} disabled={!rejectionReason}>Confirm Rejection</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
