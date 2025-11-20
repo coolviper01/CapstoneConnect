@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Consultation": {
@@ -94,9 +95,16 @@
         "details": { "type": "string", "description": "Detailed description of the capstone project." },
         "studentIds": { "type": "array", "description": "References to the Students in the project group. (Relationship: Student N:N CapstoneProject)", "items": { "type": "string" } },
         "subjectId": { "type": "string", "description": "Reference to the Subject the project is registered under. (Relationship: Subject 1:N CapstoneProject)" },
-        "teacherId": { "type": "string", "description": "Denormalized reference to the Teacher of the subject." }
+        "teacherId": { "type": "string", "description": "Denormalized reference to the Teacher of the subject." },
+        "adviserId": { "type": "string", "description": "Reference to the selected Advisor for the project. (Relationship: Advisor 1:N CapstoneProject)" },
+        "status": {
+            "type": "string",
+            "description": "The approval status of the capstone project.",
+            "enum": ["Pending Teacher Approval", "Pending Adviser Approval", "Approved", "Rejected"]
+        },
+        "rejectionReason": { "type": "string", "description": "An optional reason for why the project was rejected." }
       },
-      "required": [ "id", "title", "details", "studentIds", "subjectId", "teacherId" ]
+      "required": [ "id", "title", "details", "studentIds", "subjectId", "teacherId", "adviserId", "status" ]
     }
   },
   "auth": {

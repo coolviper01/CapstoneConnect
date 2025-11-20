@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Clock, Check, X, HelpCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,13 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { RegisterProjectForm } from './register-project-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 
 export default function StudentProjectsPage() {
   const [isRegisterDialogOpen, setRegisterDialogOpen] = useState(false);
@@ -45,6 +53,34 @@ export default function StudentProjectsPage() {
   };
   
   const userHasProject = projects && projects.length > 0;
+  
+  const getStatusIcon = (status: CapstoneProject['status']) => {
+    switch (status) {
+        case 'Approved':
+            return <Check className="h-4 w-4 text-green-500" />;
+        case 'Pending Adviser Approval':
+        case 'Pending Teacher Approval':
+            return <Clock className="h-4 w-4 text-yellow-500" />;
+        case 'Rejected':
+            return <X className="h-4 w-4 text-red-500" />;
+        default:
+            return <HelpCircle className="h-4 w-4 text-muted-foreground" />;
+    }
+  }
+  
+  const getBadgeVariant = (status: CapstoneProject['status']): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+      case 'Approved':
+        return 'default';
+      case 'Pending Adviser Approval':
+      case 'Pending Teacher Approval':
+        return 'secondary';
+      case 'Rejected':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
 
   const renderMyProject = () => {
     if (isLoadingProjects || isUserLoading) {
@@ -56,11 +92,27 @@ export default function StudentProjectsPage() {
       return (
         <Card className="bg-primary/5 border-primary">
           <CardHeader>
-            <CardTitle>{project.title}</CardTitle>
-            {subject && <CardDescription>Registered under: {subject.name}</CardDescription>}
+            <div className='flex justify-between items-start'>
+                <div>
+                    <CardTitle>{project.title}</CardTitle>
+                    {subject && <CardDescription>Registered under: {subject.name}</CardDescription>}
+                </div>
+                <Badge variant={getBadgeVariant(project.status)}>
+                    <div className="flex items-center gap-2">
+                        {getStatusIcon(project.status)}
+                        {project.status}
+                    </div>
+                </Badge>
+            </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm">{project.details}</p>
+             {project.status === 'Rejected' && project.rejectionReason && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertTitle>Rejection Reason</AlertTitle>
+                <AlertDescription>{project.rejectionReason}</AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
       )
@@ -107,10 +159,22 @@ export default function StudentProjectsPage() {
               </div>
             </CardContent>
             <CardFooter>
-                <Button className="w-full" onClick={() => handleRegisterClick(subject)} disabled={userHasProject}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Register Project
-                </Button>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger className="w-full">
+                            {/* The disabled button is wrapped for the tooltip to work */}
+                            <Button className="w-full" onClick={() => handleRegisterClick(subject)} disabled={userHasProject}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Register Project
+                            </Button>
+                        </TooltipTrigger>
+                        {userHasProject && (
+                            <TooltipContent>
+                                <p>You have already registered a project.</p>
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
+                </TooltipProvider>
             </CardFooter>
           </Card>
         ))}
@@ -135,9 +199,9 @@ export default function StudentProjectsPage() {
       
       {userHasProject ? (
           <Alert>
-            <AlertTitle>Project Already Registered</AlertTitle>
+            <AlertTitle>Project Registration Submitted</AlertTitle>
             <AlertDescription>
-                You have already registered a capstone project. You can view its details below.
+                You have submitted a capstone project for approval. You can view its status below.
             </AlertDescription>
           </Alert>
       ) : null}
@@ -145,7 +209,7 @@ export default function StudentProjectsPage() {
       {renderMyProject()}
       
       <div className="space-y-4">
-        <h2 className="font-headline text-2xl font-bold">Available Subjects</h2>
+        <h2 className="font-headline text-2xl font-bold">Available Subjects for Registration</h2>
         {renderAvailableSubjects()}
       </div>
 
@@ -155,7 +219,7 @@ export default function StudentProjectsPage() {
             <DialogHeader>
               <DialogTitle>Register Project for {selectedSubject.name}</DialogTitle>
               <DialogDescription>
-                Fill out the details below to register your capstone project.
+                Fill out the details below to register your capstone project for approval.
               </DialogDescription>
             </DialogHeader>
             <RegisterProjectForm 

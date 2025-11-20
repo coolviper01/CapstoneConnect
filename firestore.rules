@@ -1,3 +1,4 @@
+
 /**
  * This ruleset enforces a security model for a student-advisor consultation application.
  *
@@ -99,6 +100,14 @@ service cloud.firestore {
     function isParticipant(docData) {
       return isAdvisor(docData) || isStudent(docData);
     }
+    
+    /**
+     * Checks if the user is an involved party in a capstone project.
+     * (Student, Teacher, or the assigned Advisor).
+     */
+    function isProjectParticipant(docData) {
+        return isStudent(docData) || isTheTeacher(docData) || isAdvisor(docData);
+    }
 
     /**
      * Validates that a new user profile document has its 'id' field
@@ -129,6 +138,16 @@ service cloud.firestore {
     function isAdvisorImmutable() {
       return request.resource.data.advisorId == resource.data.advisorId;
     }
+    
+    /**
+     * Students can't change key fields after project creation.
+     */
+    function areProjectCoreFieldsImmutable() {
+        return request.resource.data.studentIds == resource.data.studentIds &&
+               request.resource.data.subjectId == resource.data.subjectId &&
+               request.resource.data.teacherId == resource.data.teacherId &&
+               request.resource.data.adviserId == resource.data.adviserId;
+    }
 
     /**
      * Validates that the participant list on a note document is immutable.
@@ -151,8 +170,8 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree and prevents user enumeration.
      */
     match /advisors/{advisorId} {
-      allow get: if isOwner(advisorId);
-      allow list: if false;
+      allow get: if isOwner(advisorId) || isSignedIn(); // Allow others to read for selection.
+      allow list: if isSignedIn();
       allow create: if isOwner(advisorId) && isProfileIdCorrectlyAssigned(advisorId);
       allow update: if resource != null && isOwner(advisorId) && isProfileIdImmutable();
       allow delete: if resource != null && isOwner(advisorId);
@@ -214,13 +233,15 @@ service cloud.firestore {
     // Collection: capstoneProjects
     // -------------------------------------------------------------------------
     /**
-     * @description Students can create and manage their capstone projects. Teachers and advisors can read them.
+     * @description Students create projects. Teacher and selected Advisor must approve.
      * @path /capstoneProjects/{projectId}
      */
     match /capstoneProjects/{projectId} {
         allow get, list: if isSignedIn();
         allow create: if isStudent(request.resource.data);
-        allow update: if isStudent(resource.data) || isTheTeacher(resource.data);
+        // Only teacher or advisor can update status. Student can only update title/details if not approved.
+        allow update: if (isTheTeacher(resource.data) || isAdvisor(resource.data)) ||
+                         (isStudent(resource.data) && resource.data.status != 'Approved' && areProjectCoreFieldsImmutable());
         allow delete: if isStudent(resource.data);
     }
 

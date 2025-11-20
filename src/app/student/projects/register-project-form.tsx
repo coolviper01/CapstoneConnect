@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,14 +15,17 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { collection } from "firebase/firestore";
-import { addDocumentNonBlocking, useFirestore } from "@/firebase";
-import type { Subject } from "@/lib/types";
+import { collection, query } from "firebase/firestore";
+import { addDocumentNonBlocking, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import type { Subject, Advisor } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const formSchema = z.object({
   title: z.string().min(5, "Project title must be at least 5 characters."),
   details: z.string().min(20, "Project details must be at least 20 characters."),
+  adviserId: z.string().min(1, "You must select an adviser."),
 });
 
 interface RegisterProjectFormProps {
@@ -34,11 +38,15 @@ export function RegisterProjectForm({ subject, studentId, onFinished }: Register
   const { toast } = useToast();
   const firestore = useFirestore();
 
+  const advisorsQuery = useMemoFirebase(() => query(collection(firestore, 'advisors')), [firestore]);
+  const { data: advisors, isLoading: isLoadingAdvisers } = useCollection<Advisor>(advisorsQuery);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       details: "",
+      adviserId: "",
     },
   });
 
@@ -50,11 +58,12 @@ export function RegisterProjectForm({ subject, studentId, onFinished }: Register
       studentIds: [studentId],
       subjectId: subject.id,
       teacherId: subject.teacherId,
+      status: 'Pending Teacher Approval',
     });
 
     toast({
-      title: "Project Registered!",
-      description: `Your project "${values.title}" has been registered for ${subject.name}.`,
+      title: "Project Submitted for Approval!",
+      description: `Your project "${values.title}" has been sent to the teacher for review.`,
     });
     form.reset();
     onFinished();
@@ -93,7 +102,30 @@ export function RegisterProjectForm({ subject, studentId, onFinished }: Register
             </FormItem>
           )}
         />
-        <Button type="submit">Register Project</Button>
+        <FormField
+            control={form.control}
+            name="adviserId"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Select Adviser</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                {isLoadingAdvisers ? <Skeleton className="h-5 w-[250px]" /> : <SelectValue placeholder="Choose an adviser for your project" />}
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {isLoadingAdvisers ? <SelectItem value="loading" disabled>Loading advisers...</SelectItem> : 
+                            advisors?.map(adviser => (
+                                <SelectItem key={adviser.id} value={adviser.id}>{adviser.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+        />
+        <Button type="submit">Submit for Approval</Button>
       </form>
     </Form>
   );

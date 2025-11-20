@@ -1,3 +1,4 @@
+
 export type Student = {
   id: string;
   name: string;
@@ -30,6 +31,9 @@ export type CapstoneProject = {
     studentIds: string[];
     subjectId: string;
     teacherId: string;
+    adviserId: string;
+    status: 'Pending Teacher Approval' | 'Pending Adviser Approval' | 'Approved' | 'Rejected';
+    rejectionReason?: string; // Optional field for feedback
 }
 
 export type Consultation = {
