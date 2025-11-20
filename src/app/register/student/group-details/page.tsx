@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -128,9 +127,9 @@ export default function StudentGroupDetailsPage() {
   
   if (!isAuthReady) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
-            <p>Verifying session...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-background p-4">
+        <p>Verifying session...</p>
+      </div>
     );
   }
 
@@ -188,7 +187,7 @@ export default function StudentGroupDetailsPage() {
                                 <FormControl>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Choose your block..." />
-                                    </Trigger>
+                                    </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
                                     {selectedSubject.blocks.map(block => (
