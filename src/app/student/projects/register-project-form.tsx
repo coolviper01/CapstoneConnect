@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, addDoc } from "firebase/firestore";
+import { collection, query, doc, setDoc } from "firebase/firestore";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import type { Subject, Advisor, Student } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,8 +57,10 @@ export function RegisterProjectForm({ subject, student, onFinished }: RegisterPr
     }
 
     const projectsCol = collection(firestore, "capstoneProjects");
+    const newProjectRef = doc(projectsCol); // Create a reference with a new ID
     
-    await addDoc(projectsCol, {
+    await setDoc(newProjectRef, {
+      id: newProjectRef.id, // Explicitly save the ID within the document
       ...values,
       studentIds: [student.id],
       subjectId: subject.id,
@@ -137,5 +139,3 @@ export function RegisterProjectForm({ subject, student, onFinished }: RegisterPr
     </Form>
   );
 }
-
-    
