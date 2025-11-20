@@ -76,6 +76,13 @@ service cloud.firestore {
     function isTeacher() {
       return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
     }
+    
+    /**
+     * Checks if the requesting user is the designated teacher on a document.
+     */
+    function isTheTeacher(docData) {
+        return request.auth.uid == docData.teacherId;
+    }
 
 
     /**
@@ -190,6 +197,33 @@ service cloud.firestore {
       allow delete: if resource != null && isOwner(teacherId);
     }
 
+    // -------------------------------------------------------------------------
+    // Collection: subjects
+    // -------------------------------------------------------------------------
+    /**
+     * @description Teachers can create and manage their own subjects. Students and advisors can read subjects.
+     * @path /subjects/{subjectId}
+     */
+    match /subjects/{subjectId} {
+      allow get, list: if isSignedIn();
+      allow create: if isTeacher() && isTheTeacher(request.resource.data);
+      allow update, delete: if isTeacher() && isTheTeacher(resource.data);
+    }
+    
+    // -------------------------------------------------------------------------
+    // Collection: capstoneProjects
+    // -------------------------------------------------------------------------
+    /**
+     * @description Students can create and manage their capstone projects. Teachers and advisors can read them.
+     * @path /capstoneProjects/{projectId}
+     */
+    match /capstoneProjects/{projectId} {
+        allow get, list: if isSignedIn();
+        allow create: if isStudent(request.resource.data);
+        allow update: if isStudent(resource.data) || isTheTeacher(resource.data);
+        allow delete: if isStudent(resource.data);
+    }
+
 
     // -------------------------------------------------------------------------
     // Collection: consultations
@@ -239,5 +273,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

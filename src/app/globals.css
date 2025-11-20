@@ -82,3 +82,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+.tag-input-container {
+  @apply flex flex-wrap gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm;
+}
+
+.tag-input {
+  @apply flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none;
+}
+
+.tag {
+  @apply flex items-center gap-1 rounded-full bg-secondary px-2 py-1 text-xs text-secondary-foreground;
+}
+
+.tag-remove {
+  @apply ml-1 h-3 w-3 cursor-pointer text-muted-foreground hover:text-foreground;
+}

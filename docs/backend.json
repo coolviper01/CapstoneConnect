@@ -6,73 +6,21 @@
       "type": "object",
       "description": "Represents a consultation session between advisors and students.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Consultation entity."
-        },
-        "semester": {
-          "type": "string",
-          "description": "The semester in which the consultation takes place (e.g., Fall, Spring, Summer)."
-        },
-        "academicYear": {
-          "type": "string",
-          "description": "The academic year in which the consultation takes place (e.g., 2023-2024)."
-        },
-        "capstoneTitle": {
-          "type": "string",
-          "description": "The title of the capstone project being discussed."
-        },
-        "blockGroupNumber": {
-          "type": "string",
-          "description": "The block or group number associated with the capstone project."
-        },
-        "date": {
-          "type": "string",
-          "description": "The date of the consultation.",
-          "format": "date"
-        },
-        "startTime": {
-          "type": "string",
-          "description": "The start time of the consultation.",
-          "format": "date-time"
-        },
-        "endTime": {
-          "type": "string",
-          "description": "The end time of the consultation.",
-          "format": "date-time"
-        },
-        "venue": {
-          "type": "string",
-          "description": "The location or venue where the consultation is held."
-        },
-        "advisorId": {
-          "type": "string",
-          "description": "Reference to Advisor. (Relationship: Advisor 1:N Consultation)"
-        },
-        "studentIds": {
-          "type": "array",
-          "description": "References to Students. (Relationship: Student N:N Consultation)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "notesId": {
-          "type": "string",
-          "description": "Reference to Notes. (Relationship: Notes 1:1 Consultation)"
-        }
+        "id": { "type": "string", "description": "Unique identifier for the Consultation entity." },
+        "semester": { "type": "string", "description": "The semester in which the consultation takes place (e.g., Fall, Spring, Summer)." },
+        "academicYear": { "type": "string", "description": "The academic year in which the consultation takes place (e.g., 2023-2024)." },
+        "capstoneProjectId": { "type": "string", "description": "Reference to the CapstoneProject. (Relationship: CapstoneProject 1:N Consultation)" },
+        "capstoneTitle": { "type": "string", "description": "The title of the capstone project being discussed." },
+        "blockGroupNumber": { "type": "string", "description": "The block or group number associated with the capstone project." },
+        "date": { "type": "string", "description": "The date of the consultation.", "format": "date" },
+        "startTime": { "type": "string", "description": "The start time of the consultation.", "format": "date-time" },
+        "endTime": { "type": "string", "description": "The end time of the consultation.", "format": "date-time" },
+        "venue": { "type": "string", "description": "The location or venue where the consultation is held." },
+        "advisorId": { "type": "string", "description": "Reference to Advisor. (Relationship: Advisor 1:N Consultation)" },
+        "studentIds": { "type": "array", "description": "References to Students. (Relationship: Student N:N Consultation)", "items": { "type": "string" } },
+        "notesId": { "type": "string", "description": "Reference to Notes. (Relationship: Notes 1:1 Consultation)" }
       },
-      "required": [
-        "id",
-        "semester",
-        "academicYear",
-        "capstoneTitle",
-        "blockGroupNumber",
-        "date",
-        "startTime",
-        "endTime",
-        "venue",
-        "advisorId"
-      ]
+      "required": [ "id", "semester", "academicYear", "capstoneProjectId", "date", "startTime", "endTime", "venue", "advisorId" ]
     },
     "Advisor": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -80,25 +28,11 @@
       "type": "object",
       "description": "Represents an advisor who conducts consultations.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Advisor entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the advisor."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address of the advisor.",
-          "format": "email"
-        }
+        "id": { "type": "string", "description": "Unique identifier for the Advisor entity." },
+        "name": { "type": "string", "description": "The name of the advisor." },
+        "email": { "type": "string", "description": "The email address of the advisor.", "format": "email" }
       },
-      "required": [
-        "id",
-        "name",
-        "email"
-      ]
+      "required": [ "id", "name", "email" ]
     },
     "Student": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -106,25 +40,11 @@
       "type": "object",
       "description": "Represents a student participating in a consultation.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Student entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the student."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address of the student.",
-          "format": "email"
-        }
+        "id": { "type": "string", "description": "Unique identifier for the Student entity." },
+        "name": { "type": "string", "description": "The name of the student." },
+        "email": { "type": "string", "description": "The email address of the student.", "format": "email" }
       },
-      "required": [
-        "id",
-        "name",
-        "email"
-      ]
+      "required": [ "id", "name", "email" ]
     },
     "Teacher": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -132,25 +52,11 @@
       "type": "object",
       "description": "Represents a teacher who oversees consultations.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Teacher entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the teacher."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address of the teacher.",
-          "format": "email"
-        }
+        "id": { "type": "string", "description": "Unique identifier for the Teacher entity." },
+        "name": { "type": "string", "description": "The name of the teacher." },
+        "email": { "type": "string", "description": "The email address of the teacher.", "format": "email" }
       },
-      "required": [
-        "id",
-        "name",
-        "email"
-      ]
+      "required": [ "id", "name", "email" ]
     },
     "Notes": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -158,111 +64,54 @@
       "type": "object",
       "description": "Represents the notes taken during a consultation.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Notes entity."
-        },
-        "content": {
-          "type": "string",
-          "description": "The content of the notes taken during the consultation."
-        }
+        "id": { "type": "string", "description": "Unique identifier for the Notes entity." },
+        "content": { "type": "string", "description": "The content of the notes taken during the consultation." }
       },
-      "required": [
-        "id",
-        "content"
-      ]
+      "required": [ "id", "content" ]
+    },
+    "Subject": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subject",
+      "type": "object",
+      "description": "Represents a subject or course taught by a teacher.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the Subject entity." },
+        "name": { "type": "string", "description": "The name of the subject." },
+        "yearLevel": { "type": "string", "description": "The year level the subject is for." },
+        "blocks": { "type": "array", "description": "List of blocks or sections taking the subject.", "items": { "type": "string" } },
+        "teacherId": { "type": "string", "description": "Reference to the Teacher who created the subject. (Relationship: Teacher 1:N Subject)" }
+      },
+      "required": [ "id", "name", "yearLevel", "blocks", "teacherId" ]
+    },
+    "CapstoneProject": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CapstoneProject",
+      "type": "object",
+      "description": "Represents a capstone project registered by students for a specific subject.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the CapstoneProject entity." },
+        "title": { "type": "string", "description": "The title of the capstone project." },
+        "details": { "type": "string", "description": "Detailed description of the capstone project." },
+        "studentIds": { "type": "array", "description": "References to the Students in the project group. (Relationship: Student N:N CapstoneProject)", "items": { "type": "string" } },
+        "subjectId": { "type": "string", "description": "Reference to the Subject the project is registered under. (Relationship: Subject 1:N CapstoneProject)" },
+        "teacherId": { "type": "string", "description": "Denormalized reference to the Teacher of the subject." }
+      },
+      "required": [ "id", "title", "details", "studentIds", "subjectId", "teacherId" ]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": [ "password", "anonymous" ]
   },
   "firestore": {
     "structure": [
-      {
-        "path": "/advisors/{advisorId}",
-        "definition": {
-          "entityName": "Advisor",
-          "schema": {
-            "$ref": "#/backend/entities/Advisor"
-          },
-          "description": "Collection of advisor documents. Advisors can only read/write their own documents.",
-          "params": [
-            {
-              "name": "advisorId",
-              "description": "The unique identifier for the advisor."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/students/{studentId}",
-        "definition": {
-          "entityName": "Student",
-          "schema": {
-            "$ref": "#/backend/entities/Student"
-          },
-          "description": "Collection of student documents. Students can only read/write their own documents.",
-          "params": [
-            {
-              "name": "studentId",
-              "description": "The unique identifier for the student."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/teachers/{teacherId}",
-        "definition": {
-          "entityName": "Teacher",
-          "schema": {
-            "$ref": "#/backend/entities/Teacher"
-          },
-          "description": "Collection of teacher documents. Teachers can only read/write their own documents.",
-          "params": [
-            {
-              "name": "teacherId",
-              "description": "The unique identifier for the teacher."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/consultations/{consultationId}",
-        "definition": {
-          "entityName": "Consultation",
-          "schema": {
-            "$ref": "#/backend/entities/Consultation"
-          },
-          "description": "Collection of consultation documents. Access controlled via advisorId and studentIds.",
-          "params": [
-            {
-              "name": "consultationId",
-              "description": "The unique identifier for the consultation."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/notes/{notesId}",
-        "definition": {
-          "entityName": "Notes",
-          "schema": {
-            "$ref": "#/backend/entities/Notes"
-          },
-          "description": "Collection for consultation notes. Access is controlled by the corresponding consultation document.",
-          "params": [
-            {
-              "name": "notesId",
-              "description": "The unique identifier for the notes."
-            }
-          ]
-        }
-      }
+      { "path": "/advisors/{advisorId}", "definition": { "entityName": "Advisor", "schema": { "$ref": "#/backend/entities/Advisor" }, "description": "Collection of advisor documents. Advisors can only read/write their own documents.", "params": [ { "name": "advisorId", "description": "The unique identifier for the advisor." } ] } },
+      { "path": "/students/{studentId}", "definition": { "entityName": "Student", "schema": { "$ref": "#/backend/entities/Student" }, "description": "Collection of student documents. Students can only read/write their own documents.", "params": [ { "name": "studentId", "description": "The unique identifier for the student." } ] } },
+      { "path": "/teachers/{teacherId}", "definition": { "entityName": "Teacher", "schema": { "$ref": "#/backend/entities/Teacher" }, "description": "Collection of teacher documents. Teachers can only read/write their own documents.", "params": [ { "name": "teacherId", "description": "The unique identifier for the teacher." } ] } },
+      { "path": "/consultations/{consultationId}", "definition": { "entityName": "Consultation", "schema": { "$ref": "#/backend/entities/Consultation" }, "description": "Collection of consultation documents. Access controlled via advisorId and studentIds.", "params": [ { "name": "consultationId", "description": "The unique identifier for the consultation." } ] } },
+      { "path": "/notes/{notesId}", "definition": { "entityName": "Notes", "schema": { "$ref": "#/backend/entities/Notes" }, "description": "Collection for consultation notes. Access is controlled by the corresponding consultation document.", "params": [ { "name": "notesId", "description": "The unique identifier for the notes." } ] } },
+      { "path": "/subjects/{subjectId}", "definition": { "entityName": "Subject", "schema": { "$ref": "#/backend/entities/Subject" }, "description": "Collection of subjects created by teachers.", "params": [ { "name": "subjectId", "description": "The unique identifier for the subject." } ] } },
+      { "path": "/capstoneProjects/{projectId}", "definition": { "entityName": "CapstoneProject", "schema": { "$ref": "#/backend/entities/CapstoneProject" }, "description": "Collection of capstone projects registered by students.", "params": [ { "name": "projectId", "description": "The unique identifier for the capstone project." } ] } }
     ],
     "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability, adhering to the core design principles and strategy mandates. It leverages denormalization for authorization, structural segregation for security, and consistent access modeling. Specifically, the structure employs path-based ownership for user-related data and membership maps where collaborative access is required. The structure facilitates QAPs (Rules Are Not Filters) by segregating data based on access requirements and utilizing membership maps to control access to collaborative documents. This ensures that list operations can be secured effectively. It is CRITICAL to implement security rules that enforce these requirements."
   }
 }
-    

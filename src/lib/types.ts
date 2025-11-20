@@ -15,6 +15,23 @@ export type Attendee = {
   signature: string;
 }
 
+export type Subject = {
+    id: string;
+    name: string;
+    yearLevel: string;
+    blocks: string[];
+    teacherId: string;
+}
+
+export type CapstoneProject = {
+    id: string;
+    title: string;
+    details: string;
+    studentIds: string[];
+    subjectId: string;
+    teacherId: string;
+}
+
 export type Consultation = {
   id: string;
   semester: string;
@@ -35,4 +52,5 @@ export type Consultation = {
   advisorId?: string;
   studentIds?: string[];
   notesId?: string;
+  capstoneProjectId?: string;
 };

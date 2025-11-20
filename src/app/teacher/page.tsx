@@ -126,10 +126,7 @@ export default function TeacherDashboardPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-dvh bg-background">
-       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4 sm:px-6">
-       </header>
-       <main className="flex flex-1 flex-col p-4 sm:px-6 sm:py-0 gap-6">
+    <>
         <PageHeader title="Teacher Dashboard" description="Oversee and manage all capstone consultations." />
         <Card>
             <CardHeader>
@@ -173,7 +170,6 @@ export default function TeacherDashboardPage() {
             </Table>
             </CardContent>
         </Card>
-      </main>
-    </div>
+      </>
   );
 }
