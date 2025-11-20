@@ -1,5 +1,4 @@
-
-'use client';
+'use server';
 
 import { Suspense } from 'react';
 import { PageHeader } from '@/components/page-header';
