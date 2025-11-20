@@ -70,6 +70,9 @@ export default function RequestConsultationPage() {
       advisorId: project.adviserId,
       agenda: values.agenda,
       status: 'Pending Approval',
+      semester: '',
+      academicYear: '',
+      blockGroupNumber: ''
     });
 
     toast({

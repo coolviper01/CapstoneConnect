@@ -80,6 +80,9 @@ export default function SchedulePage() {
       capstoneProjectId: selectedProject.id,
       capstoneTitle: selectedProject.title,
       projectDetails: selectedProject.details,
+      semester: '', // This should be set based on context if available
+      academicYear: '', // This should be set based on context if available
+      blockGroupNumber: '', // This should be set based on context if available
       // These would be fetched based on studentIds in a real app, for now it is empty
       students: [], 
       studentIds: selectedProject.studentIds,

@@ -56,6 +56,9 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
         endTime: values.endTime,
         venue: values.venue,
         status: "Scheduled",
+        // Carry over existing details
+        capstoneProjectId: consultation.capstoneProjectId,
+        projectDetails: consultation.projectDetails
     });
 
     form.reset();
