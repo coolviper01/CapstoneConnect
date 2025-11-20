@@ -6,6 +6,7 @@ import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 import Link from "next/link";
 import { useFirebase } from "@/firebase";
+import { SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export default function DashboardLayout({
   children,
@@ -57,8 +58,11 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <Logo />
+        <SidebarHeader className='p-0 md:p-2'>
+            <SheetHeader className='p-2 md:p-0 md:hidden'>
+                <SheetTitle asChild><Logo /></SheetTitle>
+            </SheetHeader>
+            <Logo className='hidden md:flex' />
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
