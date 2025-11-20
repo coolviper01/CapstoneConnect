@@ -125,13 +125,13 @@ export default function StudentGroupDetailsPage() {
       setIsLoading(false);
     }
   };
-
+  
   if (!isAuthReady) {
-      return (
-          <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
-              <p>Loading...</p>
-          </div>
-      );
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center">
+            <p>Loading...</p>
+        </div>
+    );
   }
 
   return (
