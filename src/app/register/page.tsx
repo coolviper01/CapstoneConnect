@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { setDoc, doc } from 'firebase/firestore';
 import { User, Briefcase, GraduationCap } from 'lucide-react';
@@ -93,11 +93,24 @@ export default function RegisterPage() {
       }
       
       if (collectionName) {
-         await setDoc(doc(firestore, collectionName, user.uid), {
+         const userDocRef = doc(firestore, collectionName, user.uid);
+         const userData = {
             id: user.uid,
             name: values.name,
             email: values.email,
-         });
+         };
+         
+         // Use setDoc which returns a promise we can catch.
+         await setDoc(userDocRef, userData)
+            .catch(error => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: userDocRef.path,
+                    operation: 'create',
+                    requestResourceData: userData
+                }));
+                // Re-throw the error to be caught by the outer try-catch block
+                throw error;
+            });
       }
 
       toast({
