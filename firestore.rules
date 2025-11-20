@@ -252,19 +252,19 @@ service cloud.firestore {
     /**
      * @description Access is granted to the advisor or any student listed in the `studentIds` array.
      * Teachers have read/write access to all consultations.
-     * Only the advisor can create or delete consultations.
+     * Only the advisor can create or delete consultations. Students can create 'Pending' requests.
      * @path /consultations/{consultationId}
      * @allow (get) An advisor or student whose UID is in `studentIds` reads a document.
      * @allow (get) A teacher reads any consultation document.
-     * @allow (create) An advisor creates a consultation, setting their own UID as the `advisorId`.
-     * @deny (create) A student tries to create a consultation.
+     * @allow (create) An advisor creates a consultation, or a student creates a request.
+     * @deny (create) A user not involved in the project tries to create a consultation.
      * @deny (delete) A student tries to delete a consultation they are part of.
      * @principle Enforces shared access via a denormalized participant list on the document.
      */
     match /consultations/{consultationId} {
       allow get: if isParticipant(resource.data) || isTeacher();
       allow list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatorTheAdvisor();
+      allow create: if isSignedIn() && (isCreatorTheAdvisor() || (isStudent(request.resource.data) && request.resource.data.status == 'Pending Approval'));
       allow update: if resource != null && (isParticipant(resource.data) || isTeacher()) && isAdvisorImmutable();
       allow delete: if resource != null && isAdvisor(resource.data);
     }
