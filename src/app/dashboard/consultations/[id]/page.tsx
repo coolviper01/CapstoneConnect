@@ -16,10 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function ConsultationDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
   const firestore = useFirestore();
   const { toast } = useToast();
-  const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", id), [firestore, id]);
+  const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", params.id), [firestore, params.id]);
   const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
   
   const [attendees, setAttendees] = useState<Attendee[]>([]);
