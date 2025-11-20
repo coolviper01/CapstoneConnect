@@ -45,12 +45,28 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
           setIsAIPending(true);
           setAiError(null);
           
-          const { date, ...restOfConsultation } = consultation;
-          const { notes, attendees, status, students, ...inputData } = restOfConsultation;
+          const {
+            semester,
+            academicYear,
+            capstoneTitle,
+            blockGroupNumber,
+            date,
+            startTime,
+            endTime,
+            venue,
+            projectDetails
+          } = consultation;
 
           const result = await getTalkingPoints({
-            ...inputData,
+            semester,
+            academicYear,
+            capstoneTitle,
+            blockGroupNumber,
             date: date ? new Date(date).toISOString() : new Date().toISOString(),
+            startTime: startTime || '',
+            endTime: endTime || '',
+            venue: venue || '',
+            projectDetails
           });
     
           if (result.success && result.talkingPoints) {
