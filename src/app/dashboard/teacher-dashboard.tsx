@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { Check, X } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
 import type { CapstoneProject, Consultation, Advisor, Student } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -96,7 +96,9 @@ export default function TeacherDashboard() {
     const handleApproveProject = (project: CapstoneProject) => {
         const projectRef = doc(firestore, 'capstoneProjects', project.id);
         const data = { status: 'Pending Adviser Approval' };
-        writeBatch(firestore).update(projectRef, data);
+        updateDoc(projectRef, data).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: projectRef.path, operation: 'update', requestResourceData: data }));
+        });
         toast({ title: "Project Approved!", description: `"${project.title}" has been forwarded to the adviser.` });
         setProjectToApprove(null);
     };
@@ -105,7 +107,9 @@ export default function TeacherDashboard() {
         if (!projectToReject) return;
         const projectRef = doc(firestore, 'capstoneProjects', projectToReject.id);
         const data = { status: 'Rejected', rejectionReason: rejectionReason };
-        writeBatch(firestore).update(projectRef, data);
+        updateDoc(projectRef, data).catch(e => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: projectRef.path, operation: 'update', requestResourceData: data }));
+        });
         toast({ variant: "destructive", title: "Project Rejected", description: `"${projectToReject.title}" has been rejected.` });
         setProjectToReject(null);
         setRejectionReason("");
@@ -117,15 +121,14 @@ export default function TeacherDashboard() {
     
         const batch = writeBatch(firestore);
         
-        // 1. Set the student's status to Active
         const studentRef = doc(firestore, 'students', student.id);
-        batch.update(studentRef, { status: 'Active' });
+        const studentUpdateData = { status: 'Active' };
+        batch.update(studentRef, studentUpdateData);
         
         let wasAddedToProject = false;
         let projectTitle = '';
 
         try {
-            // 2. Find the matching project and add the student to it
             if (student.subjectId && student.block && student.groupNumber) {
                 const projectsQuery = query(
                     collection(firestore, 'capstoneProjects'),
@@ -148,7 +151,6 @@ export default function TeacherDashboard() {
                 }
             }
 
-            // 3. Commit the batch
             await batch.commit();
 
             if (wasAddedToProject) {
@@ -158,7 +160,13 @@ export default function TeacherDashboard() {
             }
 
         } catch (error) {
-             console.error("Error approving student:", error);
+             const permissionError = new FirestorePermissionError({
+                path: studentRef.path, // Path for the primary operation that might fail
+                operation: 'update',
+                requestResourceData: studentUpdateData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+
              toast({
                 id: toastId,
                 variant: "destructive",
@@ -406,5 +414,3 @@ export default function TeacherDashboard() {
         </div>
     );
 }
-
-    

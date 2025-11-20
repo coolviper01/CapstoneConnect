@@ -89,23 +89,7 @@ export default function StudentGroupDetailsPage() {
             subjectId: values.subjectId,
             block: values.block,
             groupNumber: values.groupNumber,
-            status: "Pending Approval",
         });
-
-        const capstoneQuery = query(
-            collection(firestore, 'capstoneProjects'),
-            where('subjectId', '==', values.subjectId),
-            where('block', '==', values.block),
-            where('groupNumber', '==', values.groupNumber)
-        );
-        
-        const querySnapshot = await getDocs(capstoneQuery);
-        if (!querySnapshot.empty) {
-            const projectDoc = querySnapshot.docs[0];
-            await updateDoc(projectDoc.ref, {
-                studentIds: arrayUnion(user.uid)
-            });
-        }
 
         toast({
             title: 'Registration Submitted!',
