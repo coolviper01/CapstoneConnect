@@ -134,13 +134,19 @@
       * Student can update their own profile info if they are active.
       */
       function canUpdateStudent(studentId) {
+        // A student completing their initial registration (before being active).
         let isStudentCompletingRegistration = isOwner(studentId) &&
                                               resource.data.status == 'Pending Approval' &&
                                               request.resource.data.status == 'Pending Approval' &&
-                                              !('subjectId' in resource.data);
+                                              !('subjectId' in resource.data) && 'subjectId' in request.resource.data;
 
-        return isStudentCompletingRegistration || 
-               (isOwner(studentId) && request.resource.data.status == resource.data.status);
+        // A student updating their own info, but not their status.
+        let isStudentSelfUpdate = isOwner(studentId) && request.resource.data.status == resource.data.status;
+        
+        // A teacher is updating ONLY the status field.
+        let isTeacherApproving = isTeacher() && request.resource.data.keys().hasOnly(['status']);
+
+        return isStudentCompletingRegistration || isStudentSelfUpdate || isTeacherApproving;
       }
 
 
@@ -221,9 +227,9 @@
         allow list: if isTeacher();
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
         allow update: if resource != null && isProfileIdImmutable() && (
-                        // Case 1: The user is the student and is only updating their own data, not status.
-                        canUpdateStudent(studentId) ||
-                        // Case 2: The user is a teacher and is only updating the status field.
+                        // Case 1: Student updates own data, but not status.
+                        (isOwner(studentId) && request.resource.data.status == resource.data.status) ||
+                        // Case 2: Teacher updates ONLY the status field.
                         (isTeacher() && request.resource.data.keys().hasOnly(['status']))
                       );
         allow delete: if resource != null && isOwner(studentId);
