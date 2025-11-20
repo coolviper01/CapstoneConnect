@@ -140,6 +140,14 @@ export default function RegisterPage() {
                 className="grid grid-cols-1 gap-4"
               >
                 <Label
+                  htmlFor="teacher"
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                >
+                  <RadioGroupItem value="Teacher" id="teacher" className="sr-only" />
+                  <User className="mb-3 h-6 w-6" />
+                  Teacher
+                </Label>
+                <Label
                   htmlFor="adviser"
                   className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
                 >
@@ -154,14 +162,6 @@ export default function RegisterPage() {
                   <RadioGroupItem value="Student" id="student" className="sr-only" />
                   <GraduationCap className="mb-3 h-6 w-6" />
                   Student
-                </Label>
-                 <Label
-                  htmlFor="teacher"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                >
-                  <RadioGroupItem value="Teacher" id="teacher" className="sr-only" />
-                  <User className="mb-3 h-6 w-6" />
-                  Teacher
                 </Label>
               </RadioGroup>
             ) : (
