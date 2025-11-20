@@ -99,6 +99,7 @@ export default function SchedulePage() {
       venue: values.venue,
       agenda: values.agenda || "Adviser-scheduled session.",
       status: "Scheduled",
+      discussionPoints: [],
     });
 
     toast({
@@ -260,3 +261,5 @@ export default function SchedulePage() {
     </div>
   );
 }
+
+    

@@ -50,7 +50,9 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
   function onSubmit(values: z.infer<typeof formSchema>) {
     const consultationRef = doc(firestore, "consultations", consultation.id);
     
-    const updateData: Partial<Consultation> = {
+    // Ensure we keep existing data and just add the schedule
+    const updateData = {
+        ...consultation,
         date: values.date.toISOString().split('T')[0],
         startTime: values.startTime,
         endTime: values.endTime,
@@ -139,3 +141,5 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
     </Form>
   );
 }
+
+    

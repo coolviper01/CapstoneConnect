@@ -1,3 +1,4 @@
+
 'use client';
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -13,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 export default function StudentConsultationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -55,13 +55,15 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
         return 'secondary';
       case 'To Do':
         return 'outline';
+      default:
+        return 'outline';
     }
   };
 
   if (isLoading) {
     return (
        <div className="flex flex-col gap-6">
-          <PageHeader title={<Skeleton className="h-9 w-3/4" />} />
+          <PageHeader title={<Skeleton className="h-9 w-3/4" />} description={<Skeleton className="h-6 w-1/2" />} />
           <div className="grid md:grid-cols-3 gap-6">
               <div className="md:col-span-1 flex flex-col gap-6">
                 <Card><CardHeader><Skeleton className="h-6 w-1/2 mb-2" /><Skeleton className="h-4 w-1/4" /></CardHeader><CardContent className="space-y-4"><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-full" /></CardContent></Card>
@@ -82,7 +84,7 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={consultation.capstoneTitle} />
+      <PageHeader title={consultation.capstoneTitle} description="Consultation Details" />
       
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-1 flex flex-col gap-6">
@@ -178,3 +180,5 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
     </div>
   );
 }
+
+    

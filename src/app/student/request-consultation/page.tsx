@@ -75,13 +75,14 @@ export default function RequestConsultationPage() {
       capstoneProjectId: project.id,
       capstoneTitle: project.title,
       projectDetails: project.details,
+      semester: subject?.semester || '',
+      academicYear: subject?.academicYear || '',
+      blockGroupNumber: subject?.blocks.join(', ') || '',
       studentIds: project.studentIds,
       advisorId: project.adviserId,
       agenda: values.agenda,
       status: 'Pending Approval',
-      semester: subject?.semester || '',
-      academicYear: subject?.academicYear || '',
-      blockGroupNumber: subject?.blocks.join(', ') || ''
+      discussionPoints: [],
     });
 
     toast({
@@ -155,3 +156,5 @@ export default function RequestConsultationPage() {
     </div>
   );
 }
+
+    

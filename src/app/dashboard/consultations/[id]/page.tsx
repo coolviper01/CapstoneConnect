@@ -1,3 +1,4 @@
+
 'use client';
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -86,7 +87,7 @@ export default function ConsultationDetailPage({ params }: { params: Promise<{ i
   if (isLoading) {
     return (
        <div className="flex flex-col gap-6">
-          <PageHeader title={<Skeleton className="h-9 w-3/4" />}><Skeleton className="h-10 w-44" /></PageHeader>
+          <PageHeader title={<Skeleton className="h-9 w-3/4" />} description={<Skeleton className="h-6 w-1/2" />}><Skeleton className="h-10 w-44" /></PageHeader>
           <div className="grid md:grid-cols-3 gap-6">
               <div className="md:col-span-1 flex flex-col gap-6">
                 <Card><CardHeader><Skeleton className="h-6 w-1/2 mb-2" /><Skeleton className="h-4 w-1/4" /></CardHeader><CardContent className="space-y-4"><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-full" /></CardContent></Card>
@@ -109,7 +110,7 @@ export default function ConsultationDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={consultation.capstoneTitle}>
+      <PageHeader title={consultation.capstoneTitle} description="Consultation Detail View">
         <Button>
           <FileText className="mr-2 h-4 w-4" />
           Download PDF Report
@@ -216,4 +217,6 @@ export default function ConsultationDetailPage({ params }: { params: Promise<{ i
     </div>
   );
 }
+    
+
     
