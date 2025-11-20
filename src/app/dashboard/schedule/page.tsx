@@ -76,8 +76,8 @@ export default function SchedulePage() {
   const selectedSubject = subjects?.find(s => s.id === selectedProject?.subjectId);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!selectedProject || !user) {
-        toast({ variant: "destructive", title: "Error", description: "Selected project not found or user not logged in."});
+    if (!selectedProject || !user || !selectedSubject) {
+        toast({ variant: "destructive", title: "Error", description: "Selected project or subject not found or user not logged in."});
         return;
     }
 
@@ -87,10 +87,9 @@ export default function SchedulePage() {
       capstoneProjectId: selectedProject.id,
       capstoneTitle: selectedProject.title,
       projectDetails: selectedProject.details,
-      semester: selectedSubject?.semester || '', 
-      academicYear: selectedSubject?.academicYear || '',
-      blockGroupNumber: selectedSubject?.blocks.join(', ') || '',
-      students: [], 
+      semester: selectedSubject.semester, 
+      academicYear: selectedSubject.academicYear,
+      blockGroupNumber: selectedSubject.blocks.join(', '),
       studentIds: selectedProject.studentIds,
       advisorId: selectedProject.adviserId,
       date: values.date.toISOString().split('T')[0],
@@ -261,5 +260,3 @@ export default function SchedulePage() {
     </div>
   );
 }
-
-    

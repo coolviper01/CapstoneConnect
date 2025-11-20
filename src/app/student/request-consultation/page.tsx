@@ -59,8 +59,8 @@ export default function RequestConsultationPage() {
   }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!project || !user) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Project or user not found.' });
+    if (!project || !user || !subject) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Project, subject, or user not found.' });
       return;
     }
 
@@ -75,9 +75,9 @@ export default function RequestConsultationPage() {
       capstoneProjectId: project.id,
       capstoneTitle: project.title,
       projectDetails: project.details,
-      semester: subject?.semester || '',
-      academicYear: subject?.academicYear || '',
-      blockGroupNumber: subject?.blocks.join(', ') || '',
+      semester: subject.semester,
+      academicYear: subject.academicYear,
+      blockGroupNumber: subject.blocks.join(', '),
       studentIds: project.studentIds,
       advisorId: project.adviserId,
       agenda: values.agenda,
@@ -156,5 +156,3 @@ export default function RequestConsultationPage() {
     </div>
   );
 }
-
-    
