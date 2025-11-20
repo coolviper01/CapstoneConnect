@@ -179,11 +179,9 @@ export default function StudentDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
         <PageHeader title="My Consultations" description="Here are your requested and scheduled capstone appointments." />
-        <div className="grid gap-6 md:grid-cols-2 lg:col-span-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {renderContent()}
         </div>
     </div>
   );
 }
-
-    

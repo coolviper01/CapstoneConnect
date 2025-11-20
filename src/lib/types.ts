@@ -78,5 +78,3 @@ export type Consultation = {
   attendanceCode?: string; // For QR/manual code attendance
   isAttendanceOpen?: boolean; // To control attendance window
 };
-
-    

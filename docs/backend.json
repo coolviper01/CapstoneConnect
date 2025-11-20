@@ -135,5 +135,3 @@
     "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability, adhering to the core design principles and strategy mandates. It leverages denormalization for authorization, structural segregation for security, and consistent access modeling. Specifically, the structure employs path-based ownership for user-related data and membership maps where collaborative access is required. The structure facilitates QAPs (Rules Are Not Filters) by segregating data based on access requirements and utilizing membership maps to control access to collaborative documents. This ensures that list operations can be secured effectively. It is CRITICAL to implement security rules that enforce these requirements."
   }
 }
-
-    
