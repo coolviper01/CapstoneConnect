@@ -134,13 +134,17 @@
       * Student can update their own profile info if they are active.
       */
       function canUpdateStudent(studentId) {
-        let isTeacherOfStudent = exists(/databases/$(database)/documents/subjects/$(request.resource.data.subjectId)) &&
-                                  get(/databases/$(database)/documents/subjects/$(request.resource.data.subjectId)).data.teacherId == request.auth.uid;
+        // A teacher can approve a pending student.
+        let isTeacherApprovingStudent = isTeacher() && 
+                                        request.resource.data.status == 'Active' &&
+                                        resource.data.status == 'Pending Approval';
+
+        // An active student can update their own non-status-related data.
+        let isActiveStudentUpdatingOwnData = isOwner(studentId) && 
+                                             resource.data.status == 'Active' &&
+                                             request.resource.data.status == resource.data.status;
         
-        let isActiveStudentUpdatingOwnData = isOwner(studentId) && resource.data.status == 'Active' &&
-                                             request.resource.data.status == resource.data.status; // Status cannot be changed by student
-        
-        return isTeacherOfStudent || isActiveStudentUpdatingOwnData;
+        return isTeacherApprovingStudent || isActiveStudentUpdatingOwnData;
       }
 
 
