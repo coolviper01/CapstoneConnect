@@ -119,16 +119,16 @@ export default function TeacherDashboard() {
         if (!firestore) return;
         const { id: toastId } = toast({ title: "Approving student..." });
     
-        const batch = writeBatch(firestore);
-        
         const studentRef = doc(firestore, 'students', student.id);
         const studentUpdateData = { status: 'Active' };
-        batch.update(studentRef, studentUpdateData);
-        
-        let wasAddedToProject = false;
-        let projectTitle = '';
 
         try {
+            const batch = writeBatch(firestore);
+            batch.update(studentRef, studentUpdateData);
+            
+            let wasAddedToProject = false;
+            let projectTitle = '';
+
             if (student.subjectId && student.block && student.groupNumber) {
                 const projectsQuery = query(
                     collection(firestore, 'capstoneProjects'),
@@ -414,3 +414,5 @@ export default function TeacherDashboard() {
         </div>
     );
 }
+
+    
