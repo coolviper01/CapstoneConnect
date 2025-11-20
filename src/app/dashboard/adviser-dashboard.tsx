@@ -243,21 +243,23 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                                         </Select>
                                      </div>
                                      {point.studentResponse && (
-                                        <div className='bg-muted/50 p-3 rounded-md'>
-                                            <div className='flex justify-between items-center mb-2'>
+                                        <div className='bg-muted/50 p-3 rounded-md space-y-3'>
+                                            <div className='flex justify-between items-center'>
                                                 <h4 className="font-semibold text-sm">Student's Update</h4>
                                                 {point.studentUpdateStatus && <Badge variant={getStatusBadgeVariant(point.studentUpdateStatus)}>{point.studentUpdateStatus}</Badge>}
                                             </div>
                                             <p className="text-sm whitespace-pre-wrap">{point.studentResponse}</p>
+                                            
                                             {point.studentUpdateStatus === 'Pending' && (
-                                                <div className="flex justify-end gap-2 mt-3">
+                                                <div className="flex justify-end gap-2 pt-2 border-t">
                                                     <Button size="sm" variant="outline" onClick={() => setRejectionPoint(point)}><X className="mr-2 h-4 w-4" /> Reject</Button>
                                                     <Button size="sm" onClick={() => handleUpdateReview(point.id, 'Approved')}><Check className="mr-2 h-4 w-4" /> Approve</Button>
                                                 </div>
                                             )}
+                                            
                                             {point.studentUpdateStatus === 'Rejected' && point.adviserFeedback && (
-                                                <Alert variant="destructive" className="mt-3">
-                                                    <AlertTitle>Rejection Feedback</AlertTitle>
+                                                <Alert variant="destructive" className="mt-2">
+                                                    <AlertTitle>Your Feedback</AlertTitle>
                                                     <AlertDescription>{point.adviserFeedback}</AlertDescription>
                                                 </Alert>
                                             )}
