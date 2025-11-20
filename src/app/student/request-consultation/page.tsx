@@ -74,7 +74,7 @@ export default function RequestConsultationPage() {
     addDocumentNonBlocking(consultationsCol, {
       capstoneProjectId: project.id,
       capstoneTitle: project.title,
-      projectDetails: project.details,
+      projectDetails: project.details, // Ensure projectDetails is copied
       semester: subject.semester,
       academicYear: subject.academicYear,
       blockGroupNumber: subject.blocks.join(', '),
@@ -90,7 +90,7 @@ export default function RequestConsultationPage() {
       description: 'Your request has been sent to the adviser for approval and scheduling.',
     });
     
-    router.push('/student/projects');
+    router.push('/student');
   }
   
   const renderProjectInfo = () => {
@@ -156,3 +156,5 @@ export default function RequestConsultationPage() {
     </div>
   );
 }
+
+    

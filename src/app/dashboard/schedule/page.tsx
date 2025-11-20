@@ -86,7 +86,7 @@ export default function SchedulePage() {
     addDocumentNonBlocking(consultationsCol, {
       capstoneProjectId: selectedProject.id,
       capstoneTitle: selectedProject.title,
-      projectDetails: selectedProject.details,
+      projectDetails: selectedProject.details, // Ensure projectDetails is copied
       semester: selectedSubject.semester, 
       academicYear: selectedSubject.academicYear,
       blockGroupNumber: selectedSubject.blocks.join(', '),
@@ -146,7 +146,7 @@ export default function SchedulePage() {
               {selectedProject && (
                  <Card className="bg-muted/50">
                     <CardHeader>
-                        <CardTitle className="text-lg">{selectedProject.title}</CardTitle>
+                        <CardTitle className="text-lg font-semibold">{selectedProject.title}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-muted-foreground">{selectedProject.details}</p>
@@ -260,3 +260,5 @@ export default function SchedulePage() {
     </div>
   );
 }
+
+    

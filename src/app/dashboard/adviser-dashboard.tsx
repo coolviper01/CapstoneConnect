@@ -48,7 +48,11 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     
     useEffect(() => {
         const fetchTalkingPoints = async () => {
-          if (!consultation) return;
+          if (!consultation || !consultation.projectDetails) {
+            setIsAIPending(false);
+            setAiError("Project details are missing, cannot generate talking points.");
+            return;
+          };
           setIsAIPending(true);
           setAiError(null);
 
@@ -215,7 +219,7 @@ function ConsultationCard({ consultation, open, onToggle }: { consultation: Cons
     <Collapsible open={open} onOpenChange={onToggle}>
       <Card>
         <CardHeader>
-          <CardTitle>{consultation.capstoneTitle}</CardTitle>
+          <CardTitle className="font-semibold">{consultation.capstoneTitle}</CardTitle>
           <CardDescription>{consultation.blockGroupNumber}</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 space-y-3 text-sm">
@@ -346,7 +350,7 @@ export default function AdviserDashboard() {
               ) : (
                   <div className="grid gap-6">
                       {pendingProjects.map(project => (
-                          <Card key={project.id} className="bg-muted/30"><CardHeader><CardTitle>{project.title}</CardTitle></CardHeader>
+                          <Card key={project.id} className="bg-muted/30"><CardHeader><CardTitle className="font-semibold">{project.title}</CardTitle></CardHeader>
                               <CardContent><p className="text-sm">{project.details}</p></CardContent>
                               <CardFooter className="flex justify-end gap-2">
                                   <Button variant="outline" onClick={() => setProjectToReject(project)}><X className="mr-2 h-4 w-4" /> Reject</Button>
@@ -371,7 +375,7 @@ export default function AdviserDashboard() {
                         <div className="grid gap-6">
                             {pendingConsultationRequests.map(request => (
                                 <Card key={request.id} className="bg-muted/30">
-                                    <CardHeader><CardTitle>{request.capstoneTitle}</CardTitle></CardHeader>
+                                    <CardHeader><CardTitle className="font-semibold">{request.capstoneTitle}</CardTitle></CardHeader>
                                     <CardContent>
                                         <p className="font-semibold text-sm mb-2">Proposed Agenda:</p>
                                         <p className="text-sm whitespace-pre-wrap">{request.agenda}</p>
@@ -437,3 +441,5 @@ export default function AdviserDashboard() {
     </div>
   );
 }
+
+    
