@@ -15,8 +15,8 @@ import React, { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 
-export default function ConsultationDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function ConsultationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const firestore = useFirestore();
   const { toast } = useToast();
   const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", id), [firestore, id]);
@@ -216,6 +216,4 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
     </div>
   );
 }
-    
-
     

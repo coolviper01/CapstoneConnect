@@ -15,8 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export default function StudentConsultationDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function StudentConsultationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const firestore = useFirestore();
   const { toast } = useToast();
   const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", id), [firestore, id]);
@@ -178,5 +178,3 @@ export default function StudentConsultationDetailPage({ params }: { params: { id
     </div>
   );
 }
-
-    
