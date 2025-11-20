@@ -4,8 +4,8 @@ import { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { Check, X } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { collection, query, where, doc, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
 import type { CapstoneProject, Consultation, Advisor, Student } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -95,7 +95,18 @@ export default function TeacherDashboard() {
     
     const handleApproveProject = (project: CapstoneProject) => {
         const projectRef = doc(firestore, 'capstoneProjects', project.id);
-        updateDocumentNonBlocking(projectRef, { status: 'Pending Adviser Approval' });
+        const data = { status: 'Pending Adviser Approval' };
+        updateDoc(projectRef, data)
+          .catch(error => {
+            errorEmitter.emit(
+              'permission-error',
+              new FirestorePermissionError({
+                path: projectRef.path,
+                operation: 'update',
+                requestResourceData: data,
+              })
+            )
+          });
         toast({ title: "Project Approved!", description: `"${project.title}" has been forwarded to the adviser.` });
         setProjectToApprove(null);
     };
@@ -103,7 +114,18 @@ export default function TeacherDashboard() {
     const handleRejectProject = () => {
         if (!projectToReject) return;
         const projectRef = doc(firestore, 'capstoneProjects', projectToReject.id);
-        updateDocumentNonBlocking(projectRef, { status: 'Rejected', rejectionReason: rejectionReason });
+        const data = { status: 'Rejected', rejectionReason: rejectionReason };
+        updateDoc(projectRef, data)
+         .catch(error => {
+            errorEmitter.emit(
+              'permission-error',
+              new FirestorePermissionError({
+                path: projectRef.path,
+                operation: 'update',
+                requestResourceData: data,
+              })
+            )
+          });
         toast({ variant: "destructive", title: "Project Rejected", description: `"${projectToReject.title}" has been rejected.` });
         setProjectToReject(null);
         setRejectionReason("");
@@ -113,14 +135,13 @@ export default function TeacherDashboard() {
         if (!firestore) return;
         const { id: toastId } = toast({ title: "Approving student..." });
     
+        const studentRef = doc(firestore, 'students', student.id);
+        const updateData = { status: 'Active' };
+        
         try {
-            const studentRef = doc(firestore, 'students', student.id);
-            const batch = writeBatch(firestore);
+            await updateDoc(studentRef, updateData);
             
-            batch.update(studentRef, { status: 'Active' });
-
             let wasAddedToProject = false;
-    
             // Post-approval logic: try to find and join an existing project
             if (student.subjectId && student.block && student.groupNumber) {
                 const projectsQuery = query(
@@ -132,26 +153,31 @@ export default function TeacherDashboard() {
                 const projectSnapshot = await getDocs(projectsQuery);
                 if (!projectSnapshot.empty) {
                     const projectDoc = projectSnapshot.docs[0];
-                    // Add student to the project only if they aren't already in it
                     if (!projectDoc.data().studentIds.includes(student.id)) {
-                        batch.update(projectDoc.ref, { 
-                            studentIds: [...projectDoc.data().studentIds, student.id] 
+                        const projectUpdateData = { studentIds: [...projectDoc.data().studentIds, student.id] };
+                         await updateDoc(projectDoc.ref, projectUpdateData).catch(error => {
+                            // This secondary error is less critical but good to handle
+                            console.warn("Could not automatically add student to project:", error);
                         });
                         wasAddedToProject = true;
                     }
                 }
             }
             
-            await batch.commit();
-
             if (wasAddedToProject) {
                 toast({ id: toastId, title: "Student Approved & Added to Project!", description: `${student.name} is now active and has been added to their group's project.` });
             } else {
                 toast({ id: toastId, title: "Student Approved!", description: `${student.name} is now an active student.` });
             }
+
         } catch (error) {
-            console.error("Failed to approve student:", error);
-            toast({ id: toastId, variant: 'destructive', title: "Approval Failed", description: "An error occurred while approving the student." });
+            const permissionError = new FirestorePermissionError({
+                path: studentRef.path,
+                operation: 'update',
+                requestResourceData: updateData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            // We don't need the generic failure toast anymore because the listener will show the error
         } finally {
             setStudentToApprove(null);
         }
@@ -393,3 +419,5 @@ export default function TeacherDashboard() {
         </div>
     );
 }
+
+    
