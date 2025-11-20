@@ -191,7 +191,7 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree and prevents user enumeration.
      */
     match /students/{studentId} {
-      allow get: if isOwner(studentId);
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
       allow update: if resource != null && isOwner(studentId) && isProfileIdImmutable();
