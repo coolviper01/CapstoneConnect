@@ -126,6 +126,32 @@
         "email"
       ]
     },
+    "Teacher": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Teacher",
+      "type": "object",
+      "description": "Represents a teacher who oversees consultations.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Teacher entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the teacher."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the teacher.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email"
+      ]
+    },
     "Notes": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Notes",
@@ -188,6 +214,22 @@
         }
       },
       {
+        "path": "/teachers/{teacherId}",
+        "definition": {
+          "entityName": "Teacher",
+          "schema": {
+            "$ref": "#/backend/entities/Teacher"
+          },
+          "description": "Collection of teacher documents. Teachers can only read/write their own documents.",
+          "params": [
+            {
+              "name": "teacherId",
+              "description": "The unique identifier for the teacher."
+            }
+          ]
+        }
+      },
+      {
         "path": "/consultations/{consultationId}",
         "definition": {
           "entityName": "Consultation",
@@ -223,3 +265,4 @@
     "reasoning": "The Firestore structure is designed to ensure authorization independence, clarity, and scalability, adhering to the core design principles and strategy mandates. It leverages denormalization for authorization, structural segregation for security, and consistent access modeling. Specifically, the structure employs path-based ownership for user-related data and membership maps where collaborative access is required. The structure facilitates QAPs (Rules Are Not Filters) by segregating data based on access requirements and utilizing membership maps to control access to collaborative documents. This ensures that list operations can be secured effectively. It is CRITICAL to implement security rules that enforce these requirements."
   }
 }
+    

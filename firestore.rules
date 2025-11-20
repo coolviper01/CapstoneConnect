@@ -3,19 +3,20 @@
  *
  * Core Philosophy:
  * The security model is built on two primary concepts: strict user ownership for personal
- * profile data (Advisors, Students) and shared access for collaborative documents
+ * profile data (Advisors, Students, Teachers) and shared access for collaborative documents
  * (Consultations, Notes). The default posture is to deny access unless explicitly granted.
  * User enumeration is strictly prohibited.
  *
  * Data Structure:
- * The data is organized into four top-level collections:
+ * The data is organized into five top-level collections:
  * - /advisors/{advisorId}: Private profiles for advisors.
  * - /students/{studentId}: Private profiles for students.
+ * - /teachers/{teacherId}: Private profiles for teachers.
  * - /consultations/{consultationId}: Shared documents representing a meeting.
  * - /notes/{notesId}: Shared documents for notes related to a consultation.
  *
  * Key Security Decisions:
- * - User Profiles (/advisors, /students) are strictly private. A user can only access
+ * - User Profiles (/advisors, /students, /teachers) are strictly private. A user can only access
  *   their own document, identified by their UID. Listing users is disabled to
  *   prevent data leakage and user enumeration attacks.
  * - Shared Documents (/consultations, /notes) use denormalized participant lists
@@ -66,6 +67,16 @@ service cloud.firestore {
     function isAdvisor(docData) {
       return request.auth.uid == docData.advisorId;
     }
+    
+    /**
+     * Checks if the requesting user is an authenticated teacher. This assumes
+     * that a 'teachers' collection exists where teacher documents are stored.
+     * This function is used to grant broad read/write access to consultations.
+     */
+    function isTeacher() {
+      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+    }
+
 
     /**
      * Checks if the requesting user is in the list of student participants.
@@ -160,25 +171,46 @@ service cloud.firestore {
       allow delete: if resource != null && isOwner(studentId);
     }
 
+    // -------------------------------------------------------------------------
+    // Collection: teachers
+    // -------------------------------------------------------------------------
+    /**
+     * @description Teachers can create, read, update, and delete their own profile.
+     * @path /teachers/{teacherId}
+     * @allow (get) A teacher with auth.uid=`abc` reads `/teachers/abc`.
+     * @deny (get) A user with auth.uid=`xyz` tries to read `/teachers/abc`.
+     * @deny (list) Any user tries to list all documents in the `/teachers` collection.
+     * @principle Restricts access to a user's own data tree and prevents user enumeration.
+     */
+    match /teachers/{teacherId} {
+      allow get: if isOwner(teacherId);
+      allow list: if false;
+      allow create: if isOwner(teacherId) && isProfileIdCorrectlyAssigned(teacherId);
+      allow update: if resource != null && isOwner(teacherId) && isProfileIdImmutable();
+      allow delete: if resource != null && isOwner(teacherId);
+    }
+
 
     // -------------------------------------------------------------------------
     // Collection: consultations
     // -------------------------------------------------------------------------
     /**
      * @description Access is granted to the advisor or any student listed in the `studentIds` array.
+     * Teachers have read/write access to all consultations.
      * Only the advisor can create or delete consultations.
      * @path /consultations/{consultationId}
      * @allow (get) An advisor or student whose UID is in `studentIds` reads a document.
+     * @allow (get) A teacher reads any consultation document.
      * @allow (create) An advisor creates a consultation, setting their own UID as the `advisorId`.
      * @deny (create) A student tries to create a consultation.
      * @deny (delete) A student tries to delete a consultation they are part of.
      * @principle Enforces shared access via a denormalized participant list on the document.
      */
     match /consultations/{consultationId} {
-      allow get: if isParticipant(resource.data);
+      allow get: if isParticipant(resource.data) || isTeacher();
       allow list: if isSignedIn();
       allow create: if isSignedIn() && isCreatorTheAdvisor();
-      allow update: if resource != null && isParticipant(resource.data) && isAdvisorImmutable();
+      allow update: if resource != null && (isParticipant(resource.data) || isTeacher()) && isAdvisorImmutable();
       allow delete: if resource != null && isAdvisor(resource.data);
     }
 
@@ -188,20 +220,24 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
     /**
      * @description Access is controlled by participant fields (`advisorId`, `studentIds`)
-     * denormalized from the parent consultation. Only the advisor can delete.
+     * denormalized from the parent consultation. Only the advisor can delete. Teachers
+     * can read/write any note.
      * @path /notes/{notesId}
      * @allow (get) An advisor or student whose UID is in the note's participant list reads it.
+     * @allow (get) A teacher reads any note.
      * @allow (create) A participant creates a note, correctly identifying all participants.
      * @deny (update) A user tries to change the `advisorId` or `studentIds` after creation.
      * @deny (get) A user not listed as a participant tries to read the note.
      * @principle Secures a sub-resource using a denormalized Access Control List (ACL) for performance and security.
      */
     match /notes/{notesId} {
-      allow get: if isParticipant(resource.data);
+      allow get: if isParticipant(resource.data) || isTeacher();
       allow list: if isSignedIn();
       allow create: if isSignedIn() && isParticipant(request.resource.data);
-      allow update: if resource != null && isParticipant(resource.data) && areNoteParticipantsImmutable();
+      allow update: if resource != null && (isParticipant(resource.data) || isTeacher()) && areNoteParticipantsImmutable();
       allow delete: if resource != null && isAdvisor(resource.data);
     }
   }
 }
+
+    
