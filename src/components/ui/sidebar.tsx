@@ -176,6 +176,7 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const [header, ...restChildren] = React.Children.toArray(children);
 
     if (collapsible === "none") {
       return (
@@ -206,7 +207,10 @@ const Sidebar = React.forwardRef<
             }
             side={side}
           >
-            <div className="flex h-full w-full flex-col">{children}</div>
+            <div className="flex h-full w-full flex-col">
+              {header}
+              {restChildren}
+            </div>
           </SheetContent>
         </Sheet>
       )
