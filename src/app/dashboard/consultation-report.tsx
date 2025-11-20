@@ -14,9 +14,6 @@ interface ConsultationReportProps {
 }
 
 export const ConsultationReport: React.FC<ConsultationReportProps> = ({ consultation, advisor }) => {
-  const handlePrint = () => {
-    window.print();
-  };
 
   return (
     <>
@@ -35,7 +32,7 @@ export const ConsultationReport: React.FC<ConsultationReportProps> = ({ consulta
             width: 100%;
           }
           .no-print {
-            display: none;
+            display: none !important;
           }
         }
       `}</style>
@@ -99,12 +96,8 @@ export const ConsultationReport: React.FC<ConsultationReportProps> = ({ consulta
         </section>
       </div>
 
-       <div className="mt-6 flex justify-end no-print">
-        <Button onClick={handlePrint}>
-          <Printer className="mr-2 h-4 w-4" />
-          Print
-        </Button>
-      </div>
     </>
   );
 };
+
+    

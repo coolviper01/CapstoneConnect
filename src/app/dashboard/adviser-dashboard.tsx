@@ -143,6 +143,14 @@ function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: 
             });
         }
     };
+    
+    const handlePrintReport = () => {
+        setReportOpen(true);
+        // Delay printing to allow dialog to render
+        setTimeout(() => {
+          window.print();
+        }, 500);
+    };
 
     const hasPendingUpdates = discussionPoints.some(p => p.studentUpdateStatus === 'Pending');
     const isConsultationClosed = consultation.status === 'Completed';
@@ -330,7 +338,7 @@ function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: 
                                 </TooltipProvider>
                             </>
                         ) : (
-                            <Button onClick={() => setReportOpen(true)}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
+                            <Button onClick={handlePrintReport}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
                         )}
                         </CardFooter>
                     </Card>
@@ -356,7 +364,7 @@ function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: 
             </AlertDialog>
             
             <Dialog open={isReportOpen} onOpenChange={setReportOpen}>
-                <DialogContent className="max-w-4xl">
+                <DialogContent className="max-w-4xl no-print">
                     <DialogHeader>
                         <DialogTitle>Consultation Report</DialogTitle>
                         <DialogDescription>
