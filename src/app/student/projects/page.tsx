@@ -26,6 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from '@/lib/utils';
 
 
 export default function StudentProjectsPage() {
@@ -169,9 +170,8 @@ export default function StudentProjectsPage() {
             <CardFooter>
                 <TooltipProvider>
                     <Tooltip>
-                        <TooltipTrigger className="w-full">
-                            {/* The disabled button is wrapped for the tooltip to work */}
-                            <Button className="w-full" onClick={() => handleRegisterClick(subject)} disabled={userHasActiveProject}>
+                        <TooltipTrigger asChild>
+                             <Button className="w-full" onClick={() => handleRegisterClick(subject)} disabled={userHasActiveProject}>
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Register Project
                             </Button>
