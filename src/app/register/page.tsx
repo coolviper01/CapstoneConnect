@@ -78,12 +78,19 @@ export default function RegisterPage() {
       await updateProfile(user, { displayName: values.name });
 
       let collectionName = '';
-      if (role === 'Adviser') collectionName = 'advisors';
-      else if (role === 'Student') collectionName = 'students';
-      else if (role === 'Teacher') collectionName = 'teachers';
+      let redirectPath = '/';
+
+      if (role === 'Adviser') {
+        collectionName = 'advisors';
+        redirectPath = '/dashboard';
+      } else if (role === 'Student') {
+        collectionName = 'students';
+        redirectPath = '/student';
+      } else if (role === 'Teacher') {
+        collectionName = 'teachers';
+        redirectPath = '/teacher';
+      }
       
-      // In a real app, Teacher would need its own collection and rules.
-      // For now, we'll assume it's similar to an advisor.
       if (collectionName) {
          await setDoc(doc(firestore, collectionName, user.uid), {
             id: user.uid,
@@ -97,7 +104,7 @@ export default function RegisterPage() {
         description: `Your ${role} account has been created.`,
       });
 
-      router.push('/dashboard');
+      router.push(redirectPath);
 
     } catch (error: any) {
       toast({
