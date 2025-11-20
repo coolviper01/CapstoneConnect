@@ -1,4 +1,3 @@
-
 'use client';
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -102,8 +101,8 @@ function AttendanceScanner({ onCodeScanned, onClose }: { onCodeScanned: (code: s
 }
 
 
-export default function StudentConsultationDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = React.use(params);
+export default function StudentConsultationDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();

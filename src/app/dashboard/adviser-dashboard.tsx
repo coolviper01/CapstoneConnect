@@ -175,7 +175,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
             </div>
             <div className="md:col-span-2 flex flex-col gap-6">
                 <Card>
-                    <CardHeader><CardTitle>Discussion Points</CardTitle><CardDescription>Add comments and action items for the students.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle className="font-semibold">Discussion Points</CardTitle><CardDescription>Add comments and action items for the students.</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                         {discussionPoints.map((point, index) => (
                             <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
@@ -431,5 +431,3 @@ export default function AdviserDashboard() {
     </div>
   );
 }
-
-    
