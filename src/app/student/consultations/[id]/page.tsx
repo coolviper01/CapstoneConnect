@@ -5,11 +5,11 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Calendar, Clock, MapPin, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { collection, doc, query, where } from "firebase/firestore";
 import type { Consultation, Student, DiscussionPoint } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +23,14 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
   const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
 
   const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
+
+  const studentIds = useMemo(() => consultation?.studentIds || [], [consultation]);
+  const studentsQuery = useMemoFirebase(() => {
+    if (studentIds.length === 0) return null;
+    return query(collection(firestore, 'students'), where('id', 'in', studentIds));
+  }, [firestore, studentIds]);
+  const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+
 
   useEffect(() => {
     if (consultation) {
@@ -60,7 +68,7 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingStudents) {
     return (
        <div className="flex flex-col gap-6">
           <PageHeader title={<Skeleton className="h-9 w-3/4" />} description={<Skeleton className="h-6 w-1/2" />} />
@@ -80,8 +88,6 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
     notFound();
   }
   
-  const studentList: Student[] = Array.isArray(consultation.students) ? consultation.students : [];
-
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title={consultation.capstoneTitle} description="Consultation Details" />
@@ -106,13 +112,13 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 <span>{consultation.venue || 'Not Scheduled'}</span>
               </div>
-              {studentList.length > 0 && (
+              {students && students.length > 0 && (
                  <div className="flex items-start gap-3">
                     <Users className="h-4 w-4 text-muted-foreground mt-1" />
                     <div>
                     <p className="font-medium">Students</p>
                     <ul className="text-muted-foreground">
-                        {studentList.map(s => <li key={s.id}>{s.name}</li>)}
+                        {students.map(s => <li key={s.id}>{s.name}</li>)}
                     </ul>
                     </div>
                 </div>
@@ -180,5 +186,3 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
     </div>
   );
 }
-
-    
