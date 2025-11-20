@@ -26,6 +26,7 @@ import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, updateDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { PendingApprovals } from "./pending-approvals";
 
 export default function TeacherDashboardPage() {
   const firestore = useFirestore();
@@ -126,8 +127,11 @@ export default function TeacherDashboardPage() {
   }
 
   return (
-    <>
-        <PageHeader title="Teacher Dashboard" description="Oversee and manage all capstone consultations." />
+    <div className="flex flex-col gap-6">
+        <PageHeader title="Teacher Dashboard" description="Oversee and manage all capstone consultations and project approvals." />
+        
+        <PendingApprovals />
+
         <Card>
             <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -170,6 +174,6 @@ export default function TeacherDashboardPage() {
             </Table>
             </CardContent>
         </Card>
-      </>
+      </div>
   );
 }
