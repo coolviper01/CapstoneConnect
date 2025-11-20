@@ -38,8 +38,13 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     useEffect(() => {
         if (consultation) {
             setDiscussionPoints(Array.isArray(consultation.discussionPoints) ? consultation.discussionPoints : []);
+            // GUARANTEE: Ensure attendance code exists.
+            if (!consultation.attendanceCode) {
+                 const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+                 updateDocumentNonBlocking(consultationRef, { attendanceCode: newCode });
+            }
         }
-    }, [consultation]);
+    }, [consultation, consultationRef]);
 
     const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
     
@@ -211,7 +216,7 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card>
         <CardHeader>
-          <CardTitle>{consultation.capstoneTitle}</CardTitle>
+          <CardTitle className="font-semibold">{consultation.capstoneTitle}</CardTitle>
           <CardDescription>{consultation.blockGroupNumber}</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 space-y-3 text-sm">
