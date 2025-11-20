@@ -144,11 +144,20 @@
       * Students can't change key fields after project creation.
       */
       function areProjectCoreFieldsImmutable() {
-          return request.resource.data.studentIds == resource.data.studentIds &&
-                request.resource.data.subjectId == resource.data.subjectId &&
+          return request.resource.data.subjectId == resource.data.subjectId &&
                 request.resource.data.teacherId == resource.data.teacherId &&
                 request.resource.data.adviserId == resource.data.adviserId;
       }
+      
+      /**
+      * Students can add themselves, but not change other core details.
+      */
+       function canStudentJoinProject() {
+          return request.resource.data.studentIds == resource.data.studentIds.concat([request.auth.uid])
+                && areProjectCoreFieldsImmutable()
+                && request.resource.data.title == resource.data.title
+                && request.resource.data.details == resource.data.details;
+       }
 
       /**
       * Validates that the participant list on a note document is immutable.
@@ -240,9 +249,15 @@
       match /capstoneProjects/{projectId} {
           allow get, list: if isSignedIn();
           allow create: if isStudent(request.resource.data);
-          // Only teacher or advisor can update status. Student can only update title/details if not approved.
-          allow update: if (isTheTeacher(resource.data) || isAdvisor(resource.data)) ||
-                          (isStudent(resource.data) && resource.data.status != 'Approved' && areProjectCoreFieldsImmutable());
+          
+          allow update: if 
+              // Teacher or Advisor can update status.
+              (isTheTeacher(resource.data) || isAdvisor(resource.data)) ||
+              // Student who is a member can update certain fields IF not fully approved.
+              (isStudent(resource.data) && resource.data.status != 'Approved' && areProjectCoreFieldsImmutable()) ||
+              // A new student can join the project group.
+              (canStudentJoinProject());
+
           allow delete: if isStudent(resource.data);
       }
 

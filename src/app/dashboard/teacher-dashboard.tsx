@@ -46,17 +46,29 @@ export default function TeacherDashboard() {
     const [projectToReject, setProjectToReject] = useState<CapstoneProject | null>(null);
     const [rejectionReason, setRejectionReason] = useState("");
 
+    const pendingProjectsQuery = useMemoFirebase(
+        () => user ? query(
+            collection(firestore, "capstoneProjects"), 
+            where("teacherId", "==", user.uid), 
+            where("status", "==", "Pending Teacher Approval")
+        ) : null,
+        [firestore, user]
+    );
+    const { data: pendingProjects, isLoading: isLoadingPendingProjects } = useCollection<CapstoneProject>(pendingProjectsQuery);
 
-    const projectsQuery = useMemoFirebase(
+    const allProjectsQuery = useMemoFirebase(
         () => user ? query(collection(firestore, "capstoneProjects"), where("teacherId", "==", user.uid)) : null,
         [firestore, user]
     );
-    const { data: projects, isLoading: isLoadingProjects } = useCollection<CapstoneProject>(projectsQuery);
+    const { data: allProjects, isLoading: isLoadingAllProjects } = useCollection<CapstoneProject>(allProjectsQuery);
 
-    const projectIds = useMemo(() => projects?.map(p => p.id) || [], [projects]);
+    const projectIds = useMemo(() => allProjects?.map(p => p.id) || [], [allProjects]);
 
     const consultationsQuery = useMemoFirebase(() => {
         if (!projectIds || projectIds.length === 0) return null;
+        // Firestore 'in' queries are limited to 30 elements. 
+        // For a teacher dashboard, this might be a concern in a large-scale app.
+        // For this context, we assume it's acceptable.
         return query(collection(firestore, "consultations"), where("capstoneProjectId", "in", projectIds))
     }, [firestore, projectIds]);
 
@@ -65,8 +77,6 @@ export default function TeacherDashboard() {
     const advisorsQuery = useMemoFirebase(() => collection(firestore, "advisors"), [firestore]);
     const { data: advisors, isLoading: isLoadingAdvisors } = useCollection<Advisor>(advisorsQuery);
     
-    const pendingProjects = projects?.filter(p => p.status === 'Pending Teacher Approval');
-
     const handleApprove = (project: CapstoneProject) => {
         const projectRef = doc(firestore, 'capstoneProjects', project.id);
         updateDocumentNonBlocking(projectRef, { status: 'Pending Adviser Approval' });
@@ -87,7 +97,9 @@ export default function TeacherDashboard() {
         return advisors?.find(a => a.id === adviserId)?.name || 'N/A';
     }
 
-    if (isUserLoading || isLoadingProjects || isLoadingConsultations || isLoadingAdvisors) {
+    const isLoading = isUserLoading || isLoadingPendingProjects || isLoadingAllProjects || isLoadingConsultations || isLoadingAdvisors;
+
+    if (isLoading) {
         return (
             <div className="flex flex-col gap-6">
                 <div className="flex items-start justify-between gap-4 mb-6">
@@ -176,7 +188,7 @@ export default function TeacherDashboard() {
                                         consultations.map(c => (
                                             <TableRow key={c.id}>
                                                 <TableCell className="font-medium">{c.capstoneTitle}</TableCell>
-                                                <TableCell>{new Date(c.date).toLocaleDateString()}</TableCell>
+                                                <TableCell>{c.date ? new Date(c.date).toLocaleDateString() : 'N/A'}</TableCell>
                                                 <TableCell>{getAdviserName(c.advisorId!)}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={c.status === 'Completed' ? 'secondary' : 'default'}>{c.status}</Badge>
