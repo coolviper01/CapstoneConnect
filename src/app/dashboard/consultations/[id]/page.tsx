@@ -17,9 +17,10 @@ import { debounce } from 'lodash';
 import { useToast } from "@/hooks/use-toast";
 
 export default function ConsultationDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const firestore = useFirestore();
   const { toast } = useToast();
-  const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", params.id), [firestore, params.id]);
+  const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", id), [firestore, id]);
   const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
   
   const [notes, setNotes] = useState("");
