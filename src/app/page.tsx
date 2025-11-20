@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,14 +16,14 @@ export default function Home() {
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Button variant="ghost" asChild>
             <Link
-              href="/teacher"
+              href="/login"
             >
               Teacher
             </Link>
           </Button>
           <Button variant="ghost" asChild>
             <Link
-              href="/student"
+              href="/login"
             >
               Student
             </Link>
@@ -60,7 +61,7 @@ export default function Home() {
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="secondary">
-                  <Link href="/student">
+                  <Link href="/login">
                     Student Login
                   </Link>
                 </Button>
