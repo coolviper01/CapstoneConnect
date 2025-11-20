@@ -217,3 +217,5 @@ export default function ConsultationDetailPage({ params }: { params: { id: strin
   );
 }
     
+
+    

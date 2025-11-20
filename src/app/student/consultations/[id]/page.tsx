@@ -178,3 +178,5 @@ export default function StudentConsultationDetailPage({ params }: { params: { id
     </div>
   );
 }
+
+    
