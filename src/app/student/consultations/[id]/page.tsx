@@ -3,26 +3,116 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users, FileText, Code } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, FileText, Code, QrCode, ScanLine, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, query, where } from "firebase/firestore";
-import type { Consultation, Student, DiscussionPoint } from "@/lib/types";
+import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from "@/firebase";
+import { collection, doc, query, where, arrayUnion } from "firebase/firestore";
+import type { Consultation, Student, DiscussionPoint, Attendee } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import Webcam from "react-webcam";
+import jsQR from "jsqr";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+
+function AttendanceScanner({ onCodeScanned, onClose }: { onCodeScanned: (code: string) => void; onClose: () => void; }) {
+  const webcamRef = useRef<Webcam>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const { toast } = useToast();
+
+  const capture = useCallback(() => {
+    if (!webcamRef.current) return;
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (imageSrc) {
+      const image = new Image();
+      image.src = imageSrc;
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d');
+        if (context) {
+          context.drawImage(image, 0, 0, image.width, image.height);
+          const imageData = context.getImageData(0, 0, image.width, image.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) {
+            onCodeScanned(code.data);
+            onClose();
+          }
+        }
+      };
+    }
+  }, [webcamRef, onCodeScanned, onClose]);
+
+  useEffect(() => {
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setHasCameraPermission(true);
+
+        if (webcamRef.current && webcamRef.current.video) {
+            webcamRef.current.video.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to scan a QR code.',
+        });
+      }
+    };
+    getCameraPermission();
+  }, [toast]);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+        if(hasCameraPermission) {
+            capture();
+        }
+    }, 500); // Check for QR code every 500ms
+    return () => clearInterval(interval);
+  }, [capture, hasCameraPermission]);
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+        {hasCameraPermission === null && <p>Requesting camera permission...</p>}
+        {hasCameraPermission === false && (
+            <Alert variant="destructive">
+                <AlertTitle>Camera Access Required</AlertTitle>
+                <AlertDescription>Please allow camera access to use the scanner.</AlertDescription>
+            </Alert>
+        )}
+        <Webcam
+            audio={false}
+            ref={webcamRef}
+            screenshotFormat="image/jpeg"
+            className="w-full rounded-md"
+            videoConstraints={{ facingMode: "environment" }}
+        />
+        <p className="text-sm text-muted-foreground">Point your camera at the QR code</p>
+    </div>
+  );
+}
+
 
 export default function StudentConsultationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", id), [firestore, id]);
   const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
 
   const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
+  const [isScannerOpen, setScannerOpen] = useState(false);
+  const [manualCode, setManualCode] = useState("");
 
   const studentIds = useMemo(() => consultation?.studentIds || [], [consultation]);
   const studentsQuery = useMemoFirebase(() => {
@@ -30,7 +120,11 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
     return query(collection(firestore, 'students'), where('id', 'in', studentIds));
   }, [firestore, studentIds]);
   const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
-
+  
+  const hasAttended = useMemo(() => {
+    if (!user || !consultation?.attendees) return false;
+    return consultation.attendees.some(a => a.studentId === user.uid);
+  }, [user, consultation?.attendees]);
 
   useEffect(() => {
     if (consultation) {
@@ -55,6 +149,29 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
     }
   }
   
+  const handleCheckIn = (code: string) => {
+    if (!user || !consultation || !consultation.isAttendanceOpen) {
+        toast({ variant: "destructive", title: "Attendance is not open", description: "The adviser has not started the attendance session."});
+        return;
+    }
+
+    if (code.trim() === consultation.attendanceCode) {
+        const newAttendee: Attendee = {
+            studentId: user.uid,
+            name: user.displayName || "Unknown Student",
+            timestamp: new Date().toISOString()
+        };
+        updateDocumentNonBlocking(consultationRef, {
+            attendees: arrayUnion(newAttendee)
+        });
+        toast({ title: "Attendance Recorded!", description: "You have successfully checked in." });
+        setManualCode("");
+        setScannerOpen(false);
+    } else {
+        toast({ variant: "destructive", title: "Invalid Code", description: "The attendance code is incorrect."});
+    }
+  };
+
   const getStatusBadgeVariant = (status: DiscussionPoint['status']) => {
     switch (status) {
       case 'Done':
@@ -136,6 +253,48 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
               )}
             </CardContent>
           </Card>
+          <Card>
+              <CardHeader>
+                  <CardTitle>Attendance Check-in</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  {hasAttended ? (
+                      <Alert>
+                        <CheckCircle className="h-4 w-4" />
+                        <AlertTitle>You are Checked In!</AlertTitle>
+                        <AlertDescription>
+                            Your attendance for this consultation has been recorded.
+                        </AlertDescription>
+                      </Alert>
+                  ) : consultation.isAttendanceOpen ? (
+                      <>
+                          <Button className="w-full" onClick={() => setScannerOpen(true)}><QrCode className="mr-2 h-4 w-4"/> Scan QR Code</Button>
+                          <div className="flex items-center gap-2">
+                            <hr className="flex-grow border-t"/>
+                            <span className="text-xs text-muted-foreground">OR</span>
+                            <hr className="flex-grow border-t"/>
+                          </div>
+                          <div className="space-y-2">
+                             <Input 
+                                placeholder="Enter 6-digit code" 
+                                value={manualCode} 
+                                onChange={(e) => setManualCode(e.target.value)}
+                                maxLength={6}
+                              />
+                             <Button className="w-full" variant="secondary" onClick={() => handleCheckIn(manualCode)} disabled={manualCode.length !== 6}>Submit Code</Button>
+                          </div>
+                      </>
+                  ) : (
+                      <Alert>
+                          <ScanLine className="h-4 w-4" />
+                          <AlertTitle>Attendance Closed</AlertTitle>
+                          <AlertDescription>
+                              The attendance session is not currently active.
+                          </AlertDescription>
+                      </Alert>
+                  )}
+              </CardContent>
+          </Card>
         </div>
         <div className="md:col-span-2 flex flex-col gap-6">
           <Card>
@@ -200,6 +359,15 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
           </Card>
         </div>
       </div>
+      <Dialog open={isScannerOpen} onOpenChange={setScannerOpen}>
+          <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Scan Attendance QR Code</DialogTitle>
+                <DialogDescription>Point your camera to the QR code displayed by your adviser.</DialogDescription>
+            </DialogHeader>
+            <AttendanceScanner onCodeScanned={handleCheckIn} onClose={() => setScannerOpen(false)} />
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

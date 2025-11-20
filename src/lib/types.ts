@@ -14,7 +14,7 @@ export type Advisor = {
 export type Attendee = {
   studentId: string; 
   name: string;
-  signature: string;
+  timestamp: string; // Changed from signature to timestamp
 }
 
 export type Subject = {
@@ -66,6 +66,8 @@ export type Consultation = {
   studentIds?: string[];
   capstoneProjectId?: string;
   agenda?: string; // New field for student to fill
+  attendanceCode?: string; // For QR/manual code attendance
+  isAttendanceOpen?: boolean; // To control attendance window
 };
 
     

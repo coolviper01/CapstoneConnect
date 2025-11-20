@@ -50,6 +50,9 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
   function onSubmit(values: z.infer<typeof formSchema>) {
     const consultationRef = doc(firestore, "consultations", consultation.id);
     
+    // Generate a 6-digit random code if it doesn't exist
+    const attendanceCode = consultation.attendanceCode || Math.floor(100000 + Math.random() * 900000).toString();
+
     // Ensure we keep existing data and just add the schedule
     const updateData = {
         date: values.date.toISOString().split('T')[0],
@@ -57,6 +60,8 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
         endTime: values.endTime,
         venue: values.venue,
         status: "Scheduled",
+        attendanceCode: attendanceCode, // Ensure code is present
+        isAttendanceOpen: false, // Default to closed
     };
 
     updateDocumentNonBlocking(consultationRef, updateData);

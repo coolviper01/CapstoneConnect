@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy } from 'lucide-react';
+import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -18,8 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ScheduleConsultationForm } from './schedule-consultation-form';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import QRCode from "react-qr-code";
 
 function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     const firestore = useFirestore();
@@ -33,40 +33,16 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     }, [firestore, studentIds]);
     const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
 
-    const [attendees, setAttendees] = useState<Attendee[]>([]);
     const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
 
     useEffect(() => {
         if (consultation) {
-            setAttendees(Array.isArray(consultation.attendees) ? consultation.attendees : []);
             setDiscussionPoints(Array.isArray(consultation.discussionPoints) ? consultation.discussionPoints : []);
         }
     }, [consultation]);
 
     const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
     
-    const handleSignatureChange = (studentId: string, signature: string) => {
-        const newAttendees = [...attendees];
-        const attendeeIndex = newAttendees.findIndex(a => a.studentId === studentId);
-        if (attendeeIndex > -1) {
-            newAttendees[attendeeIndex].signature = signature;
-        } else {
-            // Find student name to add to the attendee list
-            const student = students?.find(s => s.id === studentId);
-            if (student) {
-               newAttendees.push({ studentId, name: student.name, signature });
-            }
-        }
-        setAttendees(newAttendees);
-    };
-
-    const saveAttendance = () => {
-        if (consultationRef) {
-            updateDocumentNonBlocking(consultationRef, { attendees });
-            toast({ title: 'Attendance Saved!', description: 'The attendance record has been updated.' });
-        }
-    };
-
     const addDiscussionPoint = () => {
         const newPoint: DiscussionPoint = { id: new Date().toISOString(), adviserComment: "", status: 'To Do', category: 'Documentation' };
         setDiscussionPoints(prev => [...prev, newPoint]);
@@ -93,6 +69,17 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
         }
     };
     
+    const toggleAttendance = () => {
+        if (consultationRef) {
+            const newStatus = !consultation.isAttendanceOpen;
+            updateDocumentNonBlocking(consultationRef, { isAttendanceOpen: newStatus });
+            toast({ 
+                title: newStatus ? 'Attendance Started!' : 'Attendance Stopped!', 
+                description: newStatus ? 'Students can now check in.' : 'Students can no longer check in.' 
+            });
+        }
+    };
+
     return (
         <div className="grid md:grid-cols-3 gap-6 pt-6">
             <div className="md:col-span-1 flex flex-col gap-6">
@@ -124,6 +111,60 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                                 </div>
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Attendance</CardTitle>
+                        <CardDescription>Manage student check-in for this session.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="bg-muted p-4 rounded-lg flex flex-col items-center gap-4">
+                            {consultation.attendanceCode && (
+                                <>
+                                    <div style={{ height: "auto", margin: "0 auto", maxWidth: 128, width: "100%" }}>
+                                        <QRCode
+                                            size={256}
+                                            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                                            value={consultation.attendanceCode}
+                                            viewBox={`0 0 256 256`}
+                                        />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-sm text-muted-foreground">Manual Code</p>
+                                        <p className="text-2xl font-bold tracking-widest">{consultation.attendanceCode}</p>
+                                    </div>
+                                </>
+                            )}
+                             <Button onClick={toggleAttendance} variant={consultation.isAttendanceOpen ? 'destructive' : 'default'} className="w-full">
+                                {consultation.isAttendanceOpen ? <><Square className="mr-2 h-4 w-4"/>Stop Attendance</> : <><Play className="mr-2 h-4 w-4"/>Start Attendance</>}
+                            </Button>
+                        </div>
+                        <div className="space-y-2">
+                            <h4 className="font-medium">Present Students</h4>
+                            {isLoadingStudents && <Skeleton className="h-10 w-full" />}
+                            {!isLoadingStudents && (!consultation.attendees || consultation.attendees.length === 0) && (
+                                <p className="text-sm text-muted-foreground text-center py-2">No students have checked in yet.</p>
+                            )}
+                            {!isLoadingStudents && consultation.attendees && consultation.attendees.length > 0 && (
+                                <ul className="space-y-2">
+                                    {consultation.attendees.map(attendee => {
+                                        const student = students?.find(s => s.id === attendee.studentId);
+                                        return (
+                                            <li key={attendee.studentId} className="flex items-center gap-3 text-sm">
+                                                <Avatar className="h-8 w-8"><AvatarImage src={student?.avatarUrl} /><AvatarFallback>{getInitials(attendee.name)}</AvatarFallback></Avatar>
+                                                <div className="flex-1">
+                                                    <p className="font-medium">{attendee.name}</p>
+                                                    <p className="text-xs text-muted-foreground">Checked in at {new Date(attendee.timestamp).toLocaleTimeString()}</p>
+                                                </div>
+                                                <CheckCircle className="h-5 w-5 text-green-500" />
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -158,25 +199,6 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                         <Button variant="outline" onClick={addDiscussionPoint}><PlusCircle className="mr-2 h-4 w-4" /> Add Point</Button>
                     </CardContent>
                     <CardFooter><Button onClick={saveDiscussionPoints}>Save Discussion Points</Button></CardFooter>
-                </Card>
-
-                <Card>
-                    <CardHeader><CardTitle>Attendance</CardTitle><CardDescription>Record attendance by having students type their name to sign.</CardDescription></CardHeader>
-                    <CardContent className="space-y-4">
-                         {isLoadingStudents && <Skeleton className="h-10 w-full" />}
-                         {!isLoadingStudents && students && students.length > 0 ? (
-                            students.map(student => (
-                                <div key={student.id} className="flex items-center gap-4">
-                                    <Avatar><AvatarImage src={student.avatarUrl} alt={student.name} /><AvatarFallback>{getInitials(student.name)}</AvatarFallback></Avatar>
-                                    <span className="flex-1 font-medium">{student.name}</span>
-                                    <Input className="w-64" placeholder="Type name to sign" value={attendees.find(a => a.studentId === student.id)?.signature || ''} onChange={(e) => handleSignatureChange(student.id, e.target.value)} />
-                                </div>
-                            ))
-                         ) : (
-                            !isLoadingStudents && <p className="text-sm text-muted-foreground text-center py-4">No students to record attendance for.</p>
-                         )}
-                    </CardContent>
-                    <CardFooter><Button onClick={saveAttendance}>Save Attendance</Button></CardFooter>
                 </Card>
             </div>
         </div>
@@ -404,6 +426,3 @@ export default function AdviserDashboard() {
     </div>
   );
 }
-
-    
-    

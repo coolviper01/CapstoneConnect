@@ -71,6 +71,9 @@ export default function RequestConsultationPage() {
 
     const consultationsCol = collection(firestore, 'consultations');
     
+    // Generate a 6-digit random code
+    const attendanceCode = Math.floor(100000 + Math.random() * 900000).toString();
+
     addDocumentNonBlocking(consultationsCol, {
       capstoneProjectId: project.id,
       capstoneTitle: project.title,
@@ -83,6 +86,9 @@ export default function RequestConsultationPage() {
       agenda: values.agenda,
       status: 'Pending Approval',
       discussionPoints: [],
+      attendees: [],
+      attendanceCode: attendanceCode,
+      isAttendanceOpen: false,
     });
 
     toast({
@@ -156,5 +162,3 @@ export default function RequestConsultationPage() {
     </div>
   );
 }
-
-    

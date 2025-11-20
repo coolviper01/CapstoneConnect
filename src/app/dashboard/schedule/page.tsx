@@ -83,6 +83,9 @@ export default function SchedulePage() {
 
     const consultationsCol = collection(firestore, "consultations");
     
+    // Generate a 6-digit random code
+    const attendanceCode = Math.floor(100000 + Math.random() * 900000).toString();
+
     addDocumentNonBlocking(consultationsCol, {
       capstoneProjectId: selectedProject.id,
       capstoneTitle: selectedProject.title,
@@ -99,6 +102,9 @@ export default function SchedulePage() {
       agenda: values.agenda || "Adviser-scheduled session.",
       status: "Scheduled",
       discussionPoints: [],
+      attendees: [],
+      attendanceCode: attendanceCode,
+      isAttendanceOpen: false,
     });
 
     toast({
@@ -260,5 +266,3 @@ export default function SchedulePage() {
     </div>
   );
 }
-
-    
