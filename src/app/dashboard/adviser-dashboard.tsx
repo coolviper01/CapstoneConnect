@@ -170,7 +170,7 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
             </div>
             <div className="md:col-span-2 flex flex-col gap-6">
                 <Card>
-                    <CardHeader><CardTitle className="font-semibold">Discussion Points</CardTitle><CardDescription>Add comments and action items for the students.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle>Discussion Points</CardTitle><CardDescription>Add comments and action items for the students.</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                         {discussionPoints.map((point, index) => (
                             <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
@@ -211,7 +211,7 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card>
         <CardHeader>
-          <CardTitle className="font-semibold">{consultation.capstoneTitle}</CardTitle>
+          <CardTitle>{consultation.capstoneTitle}</CardTitle>
           <CardDescription>{consultation.blockGroupNumber}</CardDescription>
         </CardHeader>
         <CardContent className="flex-1 space-y-3 text-sm">
@@ -335,7 +335,7 @@ export default function AdviserDashboard() {
               ) : (
                   <div className="grid gap-6">
                       {pendingProjects.map(project => (
-                          <Card key={project.id} className="bg-muted/30"><CardHeader><CardTitle className="font-semibold">{project.title}</CardTitle></CardHeader>
+                          <Card key={project.id} className="bg-muted/30"><CardHeader><CardTitle>{project.title}</CardTitle></CardHeader>
                               <CardContent><p className="text-sm">{project.details}</p></CardContent>
                               <CardFooter className="flex justify-end gap-2">
                                   <Button variant="outline" onClick={() => setProjectToReject(project)}><X className="mr-2 h-4 w-4" /> Reject</Button>
@@ -360,7 +360,7 @@ export default function AdviserDashboard() {
                         <div className="grid gap-6">
                             {pendingConsultationRequests.map(request => (
                                 <Card key={request.id} className="bg-muted/30">
-                                    <CardHeader><CardTitle className="font-semibold">{request.capstoneTitle}</CardTitle></CardHeader>
+                                    <CardHeader><CardTitle>{request.capstoneTitle}</CardTitle></CardHeader>
                                     <CardContent>
                                         <p className="font-semibold text-sm mb-2">Proposed Agenda:</p>
                                         <p className="text-sm whitespace-pre-wrap">{request.agenda}</p>
@@ -426,3 +426,5 @@ export default function AdviserDashboard() {
     </div>
   );
 }
+
+    
