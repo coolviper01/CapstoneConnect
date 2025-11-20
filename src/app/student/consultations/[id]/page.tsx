@@ -1,8 +1,9 @@
 'use client';
-import { notFound, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import Link from 'next/link';
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users, FileText, Code, QrCode, ScanLine, CheckCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, FileText, Code, QrCode, ScanLine, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from "@/firebase";
 import { collection, doc, query, where, arrayUnion } from "firebase/firestore";
@@ -108,7 +109,7 @@ export default function StudentConsultationDetailPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", id), [firestore, id]);
-  const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
+  const { data: consultation, isLoading, error } = useDoc<Consultation>(consultationRef);
 
   const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
   const [isScannerOpen, setScannerOpen] = useState(false);
@@ -212,8 +213,22 @@ export default function StudentConsultationDetailPage() {
     )
   }
 
-  if (!consultation) {
-    notFound();
+  if (!consultation || error) {
+    return (
+        <div className="flex flex-col gap-6 items-center">
+            <PageHeader title="Consultation Not Found" description="We couldn't find the consultation you're looking for." />
+             <Alert variant="destructive" className="max-w-lg">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error 404</AlertTitle>
+                <AlertDescription>
+                    The consultation with ID "{id}" does not exist or you may not have permission to view it.
+                </AlertDescription>
+            </Alert>
+            <Button asChild>
+                <Link href="/student">Back to My Consultations</Link>
+            </Button>
+        </div>
+    )
   }
   
   return (
