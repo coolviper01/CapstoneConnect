@@ -1,3 +1,5 @@
+
+'use client';
 import {
   Avatar,
   AvatarFallback,
@@ -13,15 +15,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { User } from "lucide-react"
+import { useFirebase } from "@/firebase"
+import { User, LogOut } from "lucide-react"
+import { Skeleton } from "./ui/skeleton";
 
 export function UserNav() {
+  const { user, isUserLoading, handleSignOut } = useFirebase();
+
+  if (isUserLoading) {
+    return <Skeleton className="h-9 w-9 rounded-full" />;
+  }
+  
+  const getDisplayName = () => {
+    if (user?.isAnonymous) return 'Anonymous User';
+    return user?.displayName || 'User';
+  }
+  
+  const getDisplayEmail = () => {
+    if (user?.isAnonymous) return `UID: ${user.uid.substring(0, 8)}...`;
+    return user?.email || 'No email';
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarImage src="https://picsum.photos/seed/user-avatar/100/100" alt="@advisor" data-ai-hint="person face" />
+            {user?.photoURL && <AvatarImage src={user.photoURL} alt={getDisplayName()} />}
             <AvatarFallback>
                 <User />
             </AvatarFallback>
@@ -31,9 +51,9 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Advisor Name</p>
+            <p className="text-sm font-medium leading-none">{getDisplayName()}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              advisor@example.com
+              {getDisplayEmail()}
             </p>
           </div>
         </DropdownMenuLabel>
@@ -47,7 +67,8 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSignOut}>
+          <LogOut className="mr-2 h-4 w-4" />
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
