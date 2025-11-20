@@ -134,21 +134,13 @@
       * Student can update their own profile info if they are active.
       */
       function canUpdateStudent(studentId) {
-        let isTeacherApprovingStudent = isTeacher() &&
-                                        resource.data.status == 'Pending Approval' &&
-                                        request.resource.data.status == 'Active' &&
-                                        request.resource.data.keys().hasOnly(['status']);
-                                        
-        let isActiveStudentUpdatingOwnData = isOwner(studentId) && 
-                                             resource.data.status == 'Active' &&
-                                             request.resource.data.status == resource.data.status;
-        
         let isStudentCompletingRegistration = isOwner(studentId) &&
                                               resource.data.status == 'Pending Approval' &&
                                               request.resource.data.status == 'Pending Approval' &&
                                               !('subjectId' in resource.data);
 
-        return isTeacherApprovingStudent || isActiveStudentUpdatingOwnData || isStudentCompletingRegistration;
+        return isStudentCompletingRegistration || 
+               (isOwner(studentId) && request.resource.data.status == resource.data.status);
       }
 
 
@@ -228,7 +220,12 @@
         // Allow teachers to list students for approval.
         allow list: if isTeacher();
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
-        allow update: if resource != null && isProfileIdImmutable() && canUpdateStudent(studentId);
+        allow update: if resource != null && isProfileIdImmutable() && (
+                        // Case 1: The user is the student and is only updating their own data, not status.
+                        canUpdateStudent(studentId) ||
+                        // Case 2: The user is a teacher and is only updating the status field.
+                        (isTeacher() && request.resource.data.keys().hasOnly(['status']))
+                      );
         allow delete: if resource != null && isOwner(studentId);
       }
 
@@ -291,6 +288,12 @@
       * Teachers have read/write access to all consultations.
       * Only the advisor can create or delete consultations. Students can create 'Pending' requests.
       * @path /consultations/{consultationId}
+      * @allow (get) An advisor or student whose UID is in `studentIds` reads a document.
+      * @allow (get) A teacher reads any consultation document.
+      * @allow (create) An advisor creates a consultation, or a student creates a request.
+      * @deny (create) A user not involved in the project tries to create a consultation.
+      * @deny (delete) A student tries to delete a consultation they are part of.
+      * @principle Enforces shared access via a denormalized participant list on the document.
       */
       match /consultations/{consultationId} {
         allow get: if isParticipant(resource.data) || isTeacher();
@@ -309,6 +312,12 @@
       * denormalized from the parent consultation. Only the advisor can delete. Teachers
       * can read/write any note.
       * @path /notes/{notesId}
+      * @allow (get) An advisor or student whose UID is in the note's participant list reads it.
+      * @allow (get) A teacher reads any note.
+      * @allow (create) A participant creates a note, correctly identifying all participants.
+      * @deny (update) A user tries to change the `advisorId` or `studentIds` after creation.
+      * @deny (get) A user not listed as a participant tries to read the note.
+      * @principle Secures a sub-resource using a denormalized Access Control List (ACL) for performance and security.
       */
       match /notes/{notesId} {
         allow get: if isParticipant(resource.data) || isTeacher();
