@@ -108,7 +108,7 @@
     }
   },
   "auth": {
-    "providers": [ "password", "anonymous" ]
+    "providers": [ "password" ]
   },
   "firestore": {
     "structure": [
