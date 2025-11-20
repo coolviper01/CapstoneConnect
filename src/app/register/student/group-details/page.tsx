@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -106,7 +107,6 @@ export default function StudentGroupDetailsPage() {
                 studentIds: arrayUnion(user.uid)
             });
         }
-
 
         toast({
             title: 'Registration Submitted!',
