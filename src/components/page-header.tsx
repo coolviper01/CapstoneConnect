@@ -1,6 +1,6 @@
 interface PageHeaderProps {
-  title: string;
-  description?: string;
+  title: React.ReactNode;
+  description?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -10,7 +10,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
       <div className="grid gap-1">
         <h1 className="font-headline text-3xl md:text-4xl font-bold tracking-tight">{title}</h1>
         {description && (
-          <p className="text-lg text-muted-foreground">{description}</p>
+          <div className="text-lg text-muted-foreground">{description}</div>
         )}
       </div>
       {children && <div className="flex items-center gap-2">{children}</div>}
