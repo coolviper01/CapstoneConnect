@@ -19,7 +19,7 @@ import { ScheduleConsultationForm } from './schedule-consultation-form';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { getTalkingPoints } from './consultations/actions';
+import { getTalkingPoints } from '@/app/dashboard/consultations/actions';
 
 function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     const firestore = useFirestore();
