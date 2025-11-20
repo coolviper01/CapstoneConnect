@@ -206,8 +206,8 @@
         allow get: if isSignedIn();
         allow list: if isTeacher(); // Allow teachers to list students for approval.
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
-        allow update: if (isOwner(studentId) && isStudentProfileUpdateSecure()) || 
-                         (isTeacher() && request.resource.data.keys().hasOnly(["status"]));
+        allow update: if (isOwner(studentId) && isStudentProfileUpdateSecure()) ||
+                         (isTeacher() && request.resource.data.keys().hasOnly(['status']));
         allow delete: if resource != null && isOwner(studentId);
       }
 
@@ -219,7 +219,7 @@
       * @path /teachers/{teacherId}
       */
       match /teachers/{teacherId} {
-        allow get: if isOwner(teacherId);
+        allow get: if isSignedIn();
         allow list: if false;
         allow create: if isOwner(teacherId) && isProfileIdCorrectlyAssigned(teacherId);
         allow update: if resource != null && isOwner(teacherId) && request.resource.data.id == resource.data.id;
