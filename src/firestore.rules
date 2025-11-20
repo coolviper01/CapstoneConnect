@@ -128,27 +128,6 @@
       function isProfileIdImmutable() {
         return request.resource.data.id == resource.data.id;
       }
-      
-      /**
-      * Ensures that only teachers can change a student's status.
-      * Student can update their own profile info if they are active.
-      */
-      function canUpdateStudent(studentId) {
-        // A student completing their initial registration (before being active).
-        let isStudentCompletingRegistration = isOwner(studentId) &&
-                                              resource.data.status == 'Pending Approval' &&
-                                              request.resource.data.status == 'Pending Approval' &&
-                                              !('subjectId' in resource.data) && 'subjectId' in request.resource.data;
-
-        // A student updating their own info, but not their status.
-        let isStudentSelfUpdate = isOwner(studentId) && request.resource.data.status == resource.data.status;
-        
-        // A teacher is updating ONLY the status field.
-        let isTeacherApproving = isTeacher() && request.resource.data.keys().hasOnly(['status']);
-
-        return isStudentCompletingRegistration || isStudentSelfUpdate || isTeacherApproving;
-      }
-
 
       /**
       * Validates that the creator of a consultation is also the advisor.
@@ -223,15 +202,10 @@
       */
       match /students/{studentId} {
         allow get: if isSignedIn();
-        // Allow teachers to list students for approval.
-        allow list: if isTeacher();
+        allow list: if isTeacher(); // Allow teachers to list students for approval.
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
-        allow update: if resource != null && isProfileIdImmutable() && (
-                        // Case 1: Student updates own data, but not status.
-                        (isOwner(studentId) && request.resource.data.status == resource.data.status) ||
-                        // Case 2: Teacher updates ONLY the status field.
-                        (isTeacher() && request.resource.data.keys().hasOnly(['status']))
-                      );
+        allow update: if (isOwner(studentId) && isProfileIdImmutable() && request.resource.data.status == resource.data.status) || 
+                       (isTeacher() && request.resource.data.keys().hasOnly(["status"]));
         allow delete: if resource != null && isOwner(studentId);
       }
 
@@ -335,4 +309,5 @@
     }
   }
 
+    
     
