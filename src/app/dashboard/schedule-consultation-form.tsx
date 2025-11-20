@@ -19,8 +19,8 @@ import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { doc } from "firebase/firestore";
-import { useFirestore, updateDocumentNonBlocking } from "@/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
 import type { Consultation } from "@/lib/types";
 
 const formSchema = z.object({
@@ -47,7 +47,7 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     const consultationRef = doc(firestore, "consultations", consultation.id);
     
     // Generate a 6-digit random code if it doesn't exist
@@ -64,7 +64,7 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
         isAttendanceOpen: false, // Default to closed
     };
 
-    updateDocumentNonBlocking(consultationRef, updateData);
+    await updateDoc(consultationRef, updateData);
 
     form.reset();
     onFinished();
@@ -145,3 +145,5 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
     </Form>
   );
 }
+
+    

@@ -24,8 +24,8 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addDocumentNonBlocking, useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where, addDoc } from "firebase/firestore";
 import type { CapstoneProject, Subject } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,7 +75,7 @@ export default function SchedulePage() {
   const selectedProject = projects?.find(p => p.id === selectedProjectId);
   const selectedSubject = subjects?.find(s => s.id === selectedProject?.subjectId);
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!selectedProject || !user || !selectedSubject) {
         toast({ variant: "destructive", title: "Error", description: "Selected project or subject not found or user not logged in."});
         return;
@@ -86,7 +86,7 @@ export default function SchedulePage() {
     // Generate a 6-digit random code
     const attendanceCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    addDocumentNonBlocking(consultationsCol, {
+    await addDoc(consultationsCol, {
       capstoneProjectId: selectedProject.id,
       capstoneTitle: selectedProject.title,
       projectDetails: selectedProject.details, // Ensure projectDetails is copied
@@ -266,3 +266,5 @@ export default function SchedulePage() {
     </div>
   );
 }
+
+    

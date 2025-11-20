@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown, Lock, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import type { Consultation, CapstoneProject, Attendee, DiscussionPoint, Student, Advisor } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,7 +25,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ConsultationReport } from './consultation-report';
 
 
-function ConsultationDetail({ consultation, advisor }: { consultation: Consultation, advisor?: Advisor }) {
+function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: Consultation, advisor?: Advisor, setOpen: (isOpen: boolean) => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", consultation.id), [firestore, consultation.id]);
@@ -48,7 +48,7 @@ function ConsultationDetail({ consultation, advisor }: { consultation: Consultat
             // GUARANTEE: Ensure attendance code exists.
             if (!consultation.attendanceCode) {
                  const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-                 updateDocumentNonBlocking(consultationRef, { attendanceCode: newCode });
+                 updateDoc(consultationRef, { attendanceCode: newCode });
             }
         }
     }, [consultation, consultationRef]);
@@ -71,20 +71,20 @@ function ConsultationDetail({ consultation, advisor }: { consultation: Consultat
     const removeDiscussionPoint = (id: string) => {
         const newPoints = discussionPoints.filter(p => p.id !== id);
         setDiscussionPoints(newPoints);
-        updateDocumentNonBlocking(consultationRef, { discussionPoints: newPoints });
+        updateDoc(consultationRef, { discussionPoints: newPoints });
     };
 
-    const saveDiscussionPoints = () => {
+    const saveDiscussionPoints = async () => {
         if (consultationRef) {
-            updateDocumentNonBlocking(consultationRef, { discussionPoints });
+            await updateDoc(consultationRef, { discussionPoints });
             toast({ title: 'Discussion Points Saved!', description: 'Your comments have been updated.' });
         }
     };
     
-    const toggleAttendance = () => {
+    const toggleAttendance = async () => {
         if (consultationRef) {
             const newStatus = !consultation.isAttendanceOpen;
-            updateDocumentNonBlocking(consultationRef, { isAttendanceOpen: newStatus });
+            await updateDoc(consultationRef, { isAttendanceOpen: newStatus });
             toast({ 
                 title: newStatus ? 'Attendance Started!' : 'Attendance Stopped!', 
                 description: newStatus ? 'Students can now check in.' : 'Students can no longer check in.' 
@@ -134,9 +134,9 @@ function ConsultationDetail({ consultation, advisor }: { consultation: Consultat
         }
     };
 
-    const handleCloseConsultation = () => {
+    const handleCloseConsultation = async () => {
         if (consultationRef) {
-            updateDocumentNonBlocking(consultationRef, { status: 'Completed' });
+            await updateDoc(consultationRef, { status: 'Completed' });
             toast({
                 title: "Consultation Closed",
                 description: "This consultation has been marked as completed."
@@ -149,186 +149,192 @@ function ConsultationDetail({ consultation, advisor }: { consultation: Consultat
 
 
     return (
-        <div className="grid md:grid-cols-3 gap-6 pt-6">
-            <div className="md:col-span-1 flex flex-col gap-6">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Consultation Info</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 text-sm">
-                        <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{consultation.date ? new Date(consultation.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : "Not Scheduled"}</span></div>
-                        <div className="flex items-center gap-3"><Clock className="h-4 w-4 text-muted-foreground" /><span>{consultation.startTime && consultation.endTime ? `${consultation.startTime} - ${consultation.endTime}` : 'Not Scheduled'}</span></div>
-                        <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{consultation.venue || 'Not Scheduled'}</span></div>
-                        
-                        {isLoadingStudents && <Skeleton className="h-10 w-full" />}
-                        {!isLoadingStudents && students && students.length > 0 && (
-                            <div className="flex items-start gap-3">
-                                <Users className="h-4 w-4 text-muted-foreground mt-1" />
-                                <div>
-                                    <p className="font-medium">Students</p>
-                                    <ul className="text-muted-foreground">{students.map(s => <li key={s.id}>{s.name}</li>)}</ul>
-                                </div>
-                            </div>
-                        )}
-                        {!isLoadingStudents && (!students || students.length === 0) && (
-                           <div className="flex items-start gap-3">
-                                <Users className="h-4 w-4 text-muted-foreground mt-1" />
-                                <div>
-                                    <p className="font-medium">Students</p>
-                                    <p className="text-muted-foreground">No students assigned.</p>
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Attendance</CardTitle>
-                        <CardDescription>Manage student check-in for this session.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                       {!isConsultationClosed && (
-                         <div className="bg-muted p-4 rounded-lg flex flex-col items-center gap-4">
-                            {consultation.isAttendanceOpen && consultation.attendanceCode && (
-                                <>
-                                    <div style={{ height: "auto", margin: "0 auto", maxWidth: 128, width: "100%" }}>
-                                        <QRCode
-                                            size={256}
-                                            style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                                            value={consultation.attendanceCode}
-                                            viewBox={`0 0 256 256`}
-                                        />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-sm text-muted-foreground">Manual Code</p>
-                                        <p className="text-2xl font-bold tracking-widest">{consultation.attendanceCode}</p>
-                                    </div>
-                                </>
-                            )}
-                             <Button onClick={toggleAttendance} variant={consultation.isAttendanceOpen ? 'destructive' : 'default'} className="w-full">
-                                {consultation.isAttendanceOpen ? <><Square className="mr-2 h-4 w-4"/>Stop Attendance</> : <><Play className="mr-2 h-4 w-4"/>Start Attendance</>}
-                            </Button>
-                        </div>
-                       )}
-                        <div className="space-y-2">
-                            <h4 className="font-medium">Present Students</h4>
+        <div className="relative pt-12">
+             <Button variant="ghost" size="icon" className="absolute top-0 right-0" onClick={() => setOpen(false)}>
+                <X className="h-4 w-4" />
+                <span className="sr-only">Close</span>
+            </Button>
+            <div className="grid md:grid-cols-3 gap-6">
+                <div className="md:col-span-1 flex flex-col gap-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Consultation Info</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4 text-sm">
+                            <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{consultation.date ? new Date(consultation.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : "Not Scheduled"}</span></div>
+                            <div className="flex items-center gap-3"><Clock className="h-4 w-4 text-muted-foreground" /><span>{consultation.startTime && consultation.endTime ? `${consultation.startTime} - ${consultation.endTime}` : 'Not Scheduled'}</span></div>
+                            <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{consultation.venue || 'Not Scheduled'}</span></div>
+                            
                             {isLoadingStudents && <Skeleton className="h-10 w-full" />}
-                            {!isLoadingStudents && (!consultation.attendees || consultation.attendees.length === 0) && (
-                                <p className="text-sm text-muted-foreground text-center py-2">No students have checked in yet.</p>
-                            )}
-                            {!isLoadingStudents && consultation.attendees && consultation.attendees.length > 0 && (
-                                <ul className="space-y-2">
-                                    {consultation.attendees.map(attendee => {
-                                        const student = students?.find(s => s.id === attendee.studentId);
-                                        return (
-                                            <li key={attendee.studentId} className="flex items-center gap-3 text-sm">
-                                                <Avatar className="h-8 w-8"><AvatarImage src={student?.avatarUrl} /><AvatarFallback>{getInitials(attendee.name)}</AvatarFallback></Avatar>
-                                                <div className="flex-1">
-                                                    <p className="font-medium">{attendee.name}</p>
-                                                    <p className="text-xs text-muted-foreground">Checked in at {new Date(attendee.timestamp).toLocaleTimeString()}</p>
-                                                </div>
-                                                <CheckCircle className="h-5 w-5 text-green-500" />
-                                            </li>
-                                        )
-                                    })}
-                                </ul>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-            <div className="md:col-span-2 flex flex-col gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-semibold">Discussion Points</CardTitle>
-                         { !isConsultationClosed ? (
-                            <CardDescription>Add comments and action items for the students. Review their updates here.</CardDescription>
-                         ) : (
-                            <CardDescription>This consultation is closed. View the summary below.</CardDescription>
-                         )}
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {discussionPoints.map((point, index) => (
-                            <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                                <span className="font-bold text-muted-foreground pt-2">{index + 1}.</span>
-                                <div className="flex-1 grid gap-3">
-                                    <Textarea value={point.adviserComment} onChange={(e) => updateDiscussionPoint(point.id, e.target.value)} className="flex-1" placeholder="Enter discussion point or action item..." readOnly={isConsultationClosed} />
-                                     <div className='flex items-center gap-2'>
-                                        <span className="text-xs font-semibold text-muted-foreground">CATEGORY</span>
-                                        <Select
-                                            value={point.category}
-                                            onValueChange={(value: 'Documentation' | 'Prototype') => updateDiscussionPointCategory(point.id, value)}
-                                            disabled={isConsultationClosed}
-                                        >
-                                            <SelectTrigger className="w-[180px] h-8 text-xs">
-                                                <SelectValue placeholder="Set category" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Documentation">Documentation</SelectItem>
-                                                <SelectItem value="Prototype">Prototype</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                     </div>
-                                     {point.studentResponse && (
-                                        <div className='bg-muted/50 p-3 rounded-md space-y-3'>
-                                            <div className='flex justify-between items-center'>
-                                                <h4 className="font-semibold text-sm">Student's Update</h4>
-                                                {point.studentUpdateStatus && <Badge variant={getStatusBadgeVariant(point.studentUpdateStatus)}>{point.studentUpdateStatus}</Badge>}
-                                            </div>
-                                            <p className="text-sm whitespace-pre-wrap">{point.studentResponse}</p>
-                                            
-                                            {point.studentUpdateStatus === 'Pending' && !isConsultationClosed && (
-                                                <div className="flex justify-end gap-2 pt-2 border-t">
-                                                    <Button size="sm" variant="outline" onClick={() => setRejectionPoint(point)}><X className="mr-2 h-4 w-4" /> Reject</Button>
-                                                    <Button size="sm" onClick={() => handleUpdateReview(point.id, 'Approved')}><Check className="mr-2 h-4 w-4" /> Approve</Button>
-                                                </div>
-                                            )}
-                                            
-                                            {point.studentUpdateStatus === 'Rejected' && point.adviserFeedback && (
-                                                <Alert variant="destructive" className="mt-2">
-                                                    <AlertTitle>Your Feedback</AlertTitle>
-                                                    <AlertDescription>{point.adviserFeedback}</AlertDescription>
-                                                </Alert>
-                                            )}
-                                        </div>
-                                     )}
+                            {!isLoadingStudents && students && students.length > 0 && (
+                                <div className="flex items-start gap-3">
+                                    <Users className="h-4 w-4 text-muted-foreground mt-1" />
+                                    <div>
+                                        <p className="font-medium">Students</p>
+                                        <ul className="text-muted-foreground">{students.map(s => <li key={s.id}>{s.name}</li>)}</ul>
+                                    </div>
                                 </div>
-                                {!isConsultationClosed && <Button variant="ghost" size="icon" onClick={() => removeDiscussionPoint(point.id)}><Trash2 className="h-4 w-4" /></Button>}
-                            </div>
-                        ))}
-                         {!isConsultationClosed && <Button variant="outline" onClick={addDiscussionPoint}><PlusCircle className="mr-2 h-4 w-4" /> Add Point</Button>}
-                    </CardContent>
-                    <CardFooter className='flex justify-between'>
-                       {!isConsultationClosed ? (
-                         <>
-                            <Button onClick={saveDiscussionPoints}>Save Discussion Points</Button>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <div>
-                                            <Button
-                                                variant="destructive"
-                                                onClick={handleCloseConsultation}
-                                                disabled={hasPendingUpdates}
-                                            >
-                                                <Lock className="mr-2 h-4 w-4" /> Close Consultation
-                                            </Button>
+                            )}
+                            {!isLoadingStudents && (!students || students.length === 0) && (
+                            <div className="flex items-start gap-3">
+                                    <Users className="h-4 w-4 text-muted-foreground mt-1" />
+                                    <div>
+                                        <p className="font-medium">Students</p>
+                                        <p className="text-muted-foreground">No students assigned.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Attendance</CardTitle>
+                            <CardDescription>Manage student check-in for this session.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                        {!isConsultationClosed && (
+                            <div className="bg-muted p-4 rounded-lg flex flex-col items-center gap-4">
+                                {consultation.isAttendanceOpen && consultation.attendanceCode && (
+                                    <>
+                                        <div style={{ height: "auto", margin: "0 auto", maxWidth: 128, width: "100%" }}>
+                                            <QRCode
+                                                size={256}
+                                                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                                                value={consultation.attendanceCode}
+                                                viewBox={`0 0 256 256`}
+                                            />
                                         </div>
-                                    </TooltipTrigger>
-                                    {hasPendingUpdates && (
-                                        <TooltipContent>
-                                            <p>You must approve or reject all pending student updates first.</p>
-                                        </TooltipContent>
-                                    )}
-                                </Tooltip>
-                            </TooltipProvider>
-                         </>
-                       ) : (
-                          <Button onClick={() => setReportOpen(true)}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
-                       )}
-                    </CardFooter>
-                </Card>
+                                        <div className="text-center">
+                                            <p className="text-sm text-muted-foreground">Manual Code</p>
+                                            <p className="text-2xl font-bold tracking-widest">{consultation.attendanceCode}</p>
+                                        </div>
+                                    </>
+                                )}
+                                <Button onClick={toggleAttendance} variant={consultation.isAttendanceOpen ? 'destructive' : 'default'} className="w-full">
+                                    {consultation.isAttendanceOpen ? <><Square className="mr-2 h-4 w-4"/>Stop Attendance</> : <><Play className="mr-2 h-4 w-4"/>Start Attendance</>}
+                                </Button>
+                            </div>
+                        )}
+                            <div className="space-y-2">
+                                <h4 className="font-medium">Present Students</h4>
+                                {isLoadingStudents && <Skeleton className="h-10 w-full" />}
+                                {!isLoadingStudents && (!consultation.attendees || consultation.attendees.length === 0) && (
+                                    <p className="text-sm text-muted-foreground text-center py-2">No students have checked in yet.</p>
+                                )}
+                                {!isLoadingStudents && consultation.attendees && consultation.attendees.length > 0 && (
+                                    <ul className="space-y-2">
+                                        {consultation.attendees.map(attendee => {
+                                            const student = students?.find(s => s.id === attendee.studentId);
+                                            return (
+                                                <li key={attendee.studentId} className="flex items-center gap-3 text-sm">
+                                                    <Avatar className="h-8 w-8"><AvatarImage src={student?.avatarUrl} /><AvatarFallback>{getInitials(attendee.name)}</AvatarFallback></Avatar>
+                                                    <div className="flex-1">
+                                                        <p className="font-medium">{attendee.name}</p>
+                                                        <p className="text-xs text-muted-foreground">Checked in at {new Date(attendee.timestamp).toLocaleTimeString()}</p>
+                                                    </div>
+                                                    <CheckCircle className="h-5 w-5 text-green-500" />
+                                                </li>
+                                            )
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="md:col-span-2 flex flex-col gap-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="font-semibold">Discussion Points</CardTitle>
+                            { !isConsultationClosed ? (
+                                <CardDescription>Add comments and action items for the students. Review their updates here.</CardDescription>
+                            ) : (
+                                <CardDescription>This consultation is closed. View the summary below.</CardDescription>
+                            )}
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {discussionPoints.map((point, index) => (
+                                <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                                    <span className="font-bold text-muted-foreground pt-2">{index + 1}.</span>
+                                    <div className="flex-1 grid gap-3">
+                                        <Textarea value={point.adviserComment} onChange={(e) => updateDiscussionPoint(point.id, e.target.value)} className="flex-1" placeholder="Enter discussion point or action item..." readOnly={isConsultationClosed} />
+                                        <div className='flex items-center gap-2'>
+                                            <span className="text-xs font-semibold text-muted-foreground">CATEGORY</span>
+                                            <Select
+                                                value={point.category}
+                                                onValueChange={(value: 'Documentation' | 'Prototype') => updateDiscussionPointCategory(point.id, value)}
+                                                disabled={isConsultationClosed}
+                                            >
+                                                <SelectTrigger className="w-[180px] h-8 text-xs">
+                                                    <SelectValue placeholder="Set category" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Documentation">Documentation</SelectItem>
+                                                    <SelectItem value="Prototype">Prototype</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        {point.studentResponse && (
+                                            <div className='bg-muted/50 p-3 rounded-md space-y-3'>
+                                                <div className='flex justify-between items-center'>
+                                                    <h4 className="font-semibold text-sm">Student's Update</h4>
+                                                    {point.studentUpdateStatus && <Badge variant={getStatusBadgeVariant(point.studentUpdateStatus)}>{point.studentUpdateStatus}</Badge>}
+                                                </div>
+                                                <p className="text-sm whitespace-pre-wrap">{point.studentResponse}</p>
+                                                
+                                                {point.studentUpdateStatus === 'Pending' && !isConsultationClosed && (
+                                                    <div className="flex justify-end gap-2 pt-2 border-t">
+                                                        <Button size="sm" variant="outline" onClick={() => setRejectionPoint(point)}><X className="mr-2 h-4 w-4" /> Reject</Button>
+                                                        <Button size="sm" onClick={() => handleUpdateReview(point.id, 'Approved')}><Check className="mr-2 h-4 w-4" /> Approve</Button>
+                                                    </div>
+                                                )}
+                                                
+                                                {point.studentUpdateStatus === 'Rejected' && point.adviserFeedback && (
+                                                    <Alert variant="destructive" className="mt-2">
+                                                        <AlertTitle>Your Feedback</AlertTitle>
+                                                        <AlertDescription>{point.adviserFeedback}</AlertDescription>
+                                                    </Alert>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {!isConsultationClosed && <Button variant="ghost" size="icon" onClick={() => removeDiscussionPoint(point.id)}><Trash2 className="h-4 w-4" /></Button>}
+                                </div>
+                            ))}
+                            {!isConsultationClosed && <Button variant="outline" onClick={addDiscussionPoint}><PlusCircle className="mr-2 h-4 w-4" /> Add Point</Button>}
+                        </CardContent>
+                        <CardFooter className='flex justify-between'>
+                        {!isConsultationClosed ? (
+                            <>
+                                <Button onClick={saveDiscussionPoints}>Save Discussion Points</Button>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div>
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={handleCloseConsultation}
+                                                    disabled={hasPendingUpdates}
+                                                >
+                                                    <Lock className="mr-2 h-4 w-4" /> Close Consultation
+                                                </Button>
+                                            </div>
+                                        </TooltipTrigger>
+                                        {hasPendingUpdates && (
+                                            <TooltipContent>
+                                                <p>You must approve or reject all pending student updates first.</p>
+                                            </TooltipContent>
+                                        )}
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </>
+                        ) : (
+                            <Button onClick={() => setReportOpen(true)}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
+                        )}
+                        </CardFooter>
+                    </Card>
+                </div>
             </div>
             
             <AlertDialog open={!!rejectionPoint} onOpenChange={() => setRejectionPoint(null)}>
@@ -411,7 +417,7 @@ function ConsultationCard({ consultation }: { consultation: Consultation }) {
       </Card>
       {open && 
         <CollapsibleContent>
-            <ConsultationDetail consultation={consultation} advisor={advisor} />
+            <ConsultationDetail consultation={consultation} advisor={advisor} setOpen={setOpen} />
         </CollapsibleContent>
       }
     </Collapsible>
@@ -448,18 +454,18 @@ export default function AdviserDashboard() {
   const pendingConsultationRequests = useMemo(() => allConsultations?.filter(c => c.status === 'Pending Approval'), [allConsultations]);
 
   // --- HANDLERS ---
-  const handleApproveProject = (project: CapstoneProject) => {
+  const handleApproveProject = async (project: CapstoneProject) => {
     if (!project) return;
     const projectRef = doc(firestore, 'capstoneProjects', project.id);
-    updateDocumentNonBlocking(projectRef, { status: 'Approved' });
+    await updateDoc(projectRef, { status: 'Approved' });
     toast({ title: "Project Approved!", description: `"${project.title}" is now approved.` });
     setProjectToApprove(null);
   };
 
-  const handleRejectProject = () => {
+  const handleRejectProject = async () => {
     if (!projectToReject) return;
     const projectRef = doc(firestore, 'capstoneProjects', projectToReject.id);
-    updateDocumentNonBlocking(projectRef, { status: 'Rejected', rejectionReason: rejectionReason });
+    await updateDoc(projectRef, { status: 'Rejected', rejectionReason: rejectionReason });
     toast({ variant: "destructive", title: "Project Rejected", description: `"${projectToReject.title}" has been rejected.` });
     setProjectToReject(null);
     setRejectionReason("");
@@ -613,3 +619,5 @@ export default function AdviserDashboard() {
   );
 }
 
+
+    

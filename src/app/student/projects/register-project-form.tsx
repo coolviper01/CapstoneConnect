@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query } from "firebase/firestore";
-import { addDocumentNonBlocking, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, addDoc } from "firebase/firestore";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import type { Subject, Advisor, Student } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,7 +50,7 @@ export function RegisterProjectForm({ subject, student, onFinished }: RegisterPr
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!student.block || !student.groupNumber) {
         toast({ variant: 'destructive', title: "Missing Information", description: "Your block or group number is missing."});
         return;
@@ -58,7 +58,7 @@ export function RegisterProjectForm({ subject, student, onFinished }: RegisterPr
 
     const projectsCol = collection(firestore, "capstoneProjects");
     
-    addDocumentNonBlocking(projectsCol, {
+    await addDoc(projectsCol, {
       ...values,
       studentIds: [student.id],
       subjectId: subject.id,
@@ -137,3 +137,5 @@ export function RegisterProjectForm({ subject, student, onFinished }: RegisterPr
     </Form>
   );
 }
+
+    

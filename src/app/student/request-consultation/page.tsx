@@ -17,8 +17,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/hooks/use-toast';
-import { addDocumentNonBlocking, useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
+import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, doc, query, where, addDoc } from 'firebase/firestore';
 import type { CapstoneProject, Subject, Consultation } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,7 +71,7 @@ export default function RequestConsultationPage() {
     notFound();
   }
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!project || !user || !subject) {
       toast({ variant: 'destructive', title: 'Error', description: 'Project, subject, or user not found.' });
       return;
@@ -92,7 +92,7 @@ export default function RequestConsultationPage() {
     // Generate a 6-digit random code
     const attendanceCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    addDocumentNonBlocking(consultationsCol, {
+    await addDoc(consultationsCol, {
       capstoneProjectId: project.id,
       capstoneTitle: project.title,
       projectDetails: project.details, // Ensure projectDetails is copied
@@ -193,3 +193,5 @@ export default function RequestConsultationPage() {
     </div>
   );
 }
+
+    

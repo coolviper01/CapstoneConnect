@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, Calendar, Clock, MapPin, Hourglass, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { addDocumentNonBlocking, useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from "@/firebase";
 import { collection, query, where, arrayUnion, doc } from "firebase/firestore";
 import type { Consultation, Student, CapstoneProject } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -168,9 +168,11 @@ export default function StudentDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
         <PageHeader title="My Consultations" description="Here are your requested and scheduled capstone appointments." />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:col-span-3">
           {renderContent()}
         </div>
     </div>
   );
 }
+
+    

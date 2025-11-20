@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { collection } from "firebase/firestore";
-import { addDocumentNonBlocking, useFirestore, useUser } from "@/firebase";
+import { collection, addDoc } from "firebase/firestore";
+import { useFirestore, useUser } from "@/firebase";
 import { TagInput } from '@/components/ui/tag-input';
 
 const formSchema = z.object({
@@ -49,7 +49,7 @@ export function CreateSubjectForm({ onFinished }: CreateSubjectFormProps) {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) {
         toast({ variant: 'destructive', title: "Error", description: "You must be logged in to create a subject."});
         return;
@@ -57,7 +57,7 @@ export function CreateSubjectForm({ onFinished }: CreateSubjectFormProps) {
 
     const subjectsCol = collection(firestore, "subjects");
     
-    addDocumentNonBlocking(subjectsCol, {
+    await addDoc(subjectsCol, {
       ...values,
       teacherId: user.uid,
     });
@@ -152,3 +152,5 @@ export function CreateSubjectForm({ onFinished }: CreateSubjectFormProps) {
     </Form>
   );
 }
+
+    
