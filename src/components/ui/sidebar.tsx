@@ -195,26 +195,10 @@ const Sidebar = React.forwardRef<
 
     if (isMobile) {
       const headerElement = React.isValidElement(header) ? header : null;
-      const sheetHeader = headerElement && React.cloneElement(
-        headerElement as React.ReactElement,
-        { className: 'p-0' }, // Remove parent padding for the mobile view
-        <SheetHeader className="p-2">
-            <SheetTitle asChild>
-              {
-                // Find the Logo component inside the SidebarHeader
-                React.Children.map(headerElement.props.children, child => {
-                  if (React.isValidElement(child) && (child.props.className as string || '').includes('md:hidden')) {
-                    // This is a bit of a hack, assumes the mobile logo is the one we want as a title
-                    return child;
-                  }
-                   if (React.isValidElement(child) && (child.type as any).displayName === 'Logo') {
-                    return child;
-                  }
-                  return null;
-                })?.filter(Boolean)[0] || null
-              }
-            </SheetTitle>
-        </SheetHeader>
+      // Extract the Logo from the header's children to use as the SheetTitle
+      const logo = React.Children.toArray(headerElement?.props.children).find(
+        (child: any) =>
+          React.isValidElement(child) && (child.type as any).displayName === "Logo"
       );
 
       return (
@@ -231,7 +215,11 @@ const Sidebar = React.forwardRef<
             side={side}
           >
             <div className="flex h-full w-full flex-col">
-              {sheetHeader || header}
+              <SheetHeader className="p-2 border-b border-sidebar-border">
+                <SheetTitle asChild>
+                   {logo || <div />}
+                </SheetTitle>
+              </SheetHeader>
               {restChildren}
             </div>
           </SheetContent>
