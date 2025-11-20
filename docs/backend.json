@@ -43,7 +43,10 @@
       "properties": {
         "id": { "type": "string", "description": "Unique identifier for the Student entity." },
         "name": { "type": "string", "description": "The name of the student." },
-        "email": { "type": "string", "description": "The email address of the student.", "format": "email" }
+        "email": { "type": "string", "description": "The email address of the student.", "format": "email" },
+        "subjectId": { "type": "string", "description": "The ID of the subject the student is enrolled in." },
+        "block": { "type": "string", "description": "The block/section the student belongs to." },
+        "groupNumber": { "type": "string", "description": "The group number of the student within their block." }
       },
       "required": [ "id", "name", "email" ]
     },
@@ -97,6 +100,8 @@
         "details": { "type": "string", "description": "Detailed description of the capstone project." },
         "studentIds": { "type": "array", "description": "References to the Students in the project group. (Relationship: Student N:N CapstoneProject)", "items": { "type": "string" } },
         "subjectId": { "type": "string", "description": "Reference to the Subject the project is registered under. (Relationship: Subject 1:N CapstoneProject)" },
+        "block": { "type": "string", "description": "The block/section for this project." },
+        "groupNumber": { "type": "string", "description": "The group number for this project." },
         "teacherId": { "type": "string", "description": "Denormalized reference to the Teacher of the subject." },
         "adviserId": { "type": "string", "description": "Reference to the selected Advisor for the project. (Relationship: Advisor 1:N CapstoneProject)" },
         "status": {
@@ -106,7 +111,7 @@
         },
         "rejectionReason": { "type": "string", "description": "An optional reason for why the project was rejected." }
       },
-      "required": [ "id", "title", "details", "studentIds", "subjectId", "teacherId", "adviserId", "status" ]
+      "required": [ "id", "title", "details", "studentIds", "subjectId", "teacherId", "adviserId", "status", "block", "groupNumber" ]
     }
   },
   "auth": {

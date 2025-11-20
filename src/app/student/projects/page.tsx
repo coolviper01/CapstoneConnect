@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Clock, Check, X, HelpCircle, CalendarPlus } from 'lucide-react';
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { Subject, CapstoneProject } from '@/lib/types';
+import type { Subject, CapstoneProject, Student } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 
 export default function StudentProjectsPage() {
@@ -36,6 +37,11 @@ export default function StudentProjectsPage() {
 
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
+
+  const studentQuery = useMemoFirebase(() => user ? query(collection(firestore, "students"), where("id", "==", user.uid)) : null, [firestore, user]);
+  const { data: studentData, isLoading: isLoadingStudent } = useCollection<Student>(studentQuery);
+  const student = useMemo(() => studentData?.[0], [studentData]);
 
   const subjectsQuery = useMemoFirebase(
     () => collection(firestore, "subjects"),
@@ -49,6 +55,15 @@ export default function StudentProjectsPage() {
   );
   const { data: projects, isLoading: isLoadingProjects } = useCollection<CapstoneProject>(projectsQuery);
   
+  if (!isUserLoading && user && !isLoadingStudent && student && !student.subjectId) {
+      router.push('/register/student/group-details');
+      return (
+        <div className="flex flex-col gap-8 items-center justify-center h-full">
+            <p>Redirecting to complete your registration...</p>
+        </div>
+      );
+  }
+
   const handleRegisterClick = (subject: Subject) => {
     setSelectedSubject(subject);
     setRegisterDialogOpen(true);
@@ -141,7 +156,7 @@ export default function StudentProjectsPage() {
   }
   
   const renderAvailableSubjects = () => {
-     if (isLoadingSubjects) {
+     if (isLoadingSubjects || isLoadingStudent) {
       return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -169,7 +184,7 @@ export default function StudentProjectsPage() {
            <Card key={subject.id} className="flex flex-col">
             <CardHeader>
                 <CardTitle>{subject.name}</CardTitle>
-                <CardDescription>{subject.yearLevel}</CardDescription>
+                <CardDescription>{subject.yearLevel} • {subject.academicYear} • {subject.semester}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
               <div className="flex flex-wrap gap-2">
@@ -201,11 +216,11 @@ export default function StudentProjectsPage() {
     );
   }
 
-  if (isUserLoading) {
+  if (isUserLoading || isLoadingStudent) {
      return <Skeleton className="h-96 w-full" />
   }
 
-  if (!user) {
+  if (!user || !student) {
     return <div>You must be logged in to view this page.</div>;
   }
 
@@ -252,7 +267,7 @@ export default function StudentProjectsPage() {
             </DialogHeader>
             <RegisterProjectForm 
                 subject={selectedSubject} 
-                studentId={user.uid} 
+                student={student} 
                 onFinished={() => setRegisterDialogOpen(false)} 
             />
           </DialogContent>

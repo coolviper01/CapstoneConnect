@@ -4,18 +4,25 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, Calendar, Clock, MapPin, Hourglass } from "lucide-react";
+import { ArrowRight, Calendar, Clock, MapPin, Hourglass, UserPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
-import type { Consultation } from "@/lib/types";
+import { addDocumentNonBlocking, useCollection, useFirestore, useMemoFirebase, useUser, updateDocumentNonBlocking } from "@/firebase";
+import { collection, query, where, arrayUnion, doc } from "firebase/firestore";
+import type { Consultation, Student, CapstoneProject } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { useMemo } from 'react';
 
 export default function StudentDashboardPage() {
   const firestore = useFirestore();
   const { user } = useUser();
+  const { toast } = useToast();
   
+  const studentQuery = useMemoFirebase(() => user ? query(collection(firestore, "students"), where("id", "==", user.uid)) : null, [firestore, user]);
+  const { data: studentData, isLoading: isLoadingStudent } = useCollection<Student>(studentQuery);
+  const student = useMemo(() => studentData?.[0], [studentData]);
+
   const consultationsQuery = useMemoFirebase(
     () => user ? query(
         collection(firestore, "consultations"), 
@@ -23,10 +30,39 @@ export default function StudentDashboardPage() {
     ) : null,
     [firestore, user]
   );
-  const { data: studentConsultations, isLoading } = useCollection<Consultation>(consultationsQuery);
+  const { data: studentConsultations, isLoading: isLoadingConsultations } = useCollection<Consultation>(consultationsQuery);
+
+  const potentialProjectQuery = useMemoFirebase(() => {
+    if (!student || !student.subjectId || !student.block || !student.groupNumber) return null;
+    return query(
+        collection(firestore, 'capstoneProjects'),
+        where('subjectId', '==', student.subjectId),
+        where('block', '==', student.block),
+        where('groupNumber', '==', student.groupNumber)
+    );
+  }, [firestore, student]);
+
+  const { data: potentialProjects, isLoading: isLoadingProjects } = useCollection<CapstoneProject>(potentialProjectQuery);
+  const projectToJoin = useMemo(() => {
+      if (!potentialProjects || !user) return null;
+      // Find a project where the current user is NOT already a member
+      return potentialProjects.find(p => !p.studentIds.includes(user.uid));
+  }, [potentialProjects, user]);
+
+  const handleJoinProject = () => {
+    if (!projectToJoin || !user) return;
+    const projectRef = doc(firestore, 'capstoneProjects', projectToJoin.id);
+    updateDocumentNonBlocking(projectRef, {
+        studentIds: arrayUnion(user.uid)
+    });
+    toast({
+        title: "Project Joined!",
+        description: `You have been added to "${projectToJoin.title}".`
+    });
+  };
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoadingStudent || isLoadingConsultations || isLoadingProjects) {
       return Array.from({ length: 2 }).map((_, i) => (
         <Card key={i}>
           <CardHeader>
@@ -43,6 +79,27 @@ export default function StudentDashboardPage() {
           </CardFooter>
         </Card>
       ));
+    }
+    
+    if (projectToJoin) {
+        return (
+            <Card className="md:col-span-2 lg:col-span-3 bg-primary/5 border-primary/20">
+                <CardHeader>
+                    <CardTitle>A Project is Waiting for You!</CardTitle>
+                    <CardDescription>Your group leader has already registered a project. Join now to get started.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <h3 className="font-semibold text-lg">{projectToJoin.title}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{projectToJoin.details}</p>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleJoinProject}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Join Project
+                    </Button>
+                </CardFooter>
+            </Card>
+        )
     }
 
     if (!studentConsultations || studentConsultations.length === 0) {

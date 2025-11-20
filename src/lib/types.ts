@@ -2,7 +2,10 @@
 export type Student = {
   id: string;
   name: string;
-  avatarUrl?: string; // Made optional as it might not always exist
+  avatarUrl?: string;
+  subjectId?: string;
+  block?: string;
+  groupNumber?: string;
 };
 
 export type Advisor = {
@@ -33,6 +36,8 @@ export type CapstoneProject = {
     details: string;
     studentIds: string[];
     subjectId: string;
+    block: string;
+    groupNumber: string;
     teacherId: string;
     adviserId: string;
     status: 'Pending Teacher Approval' | 'Pending Adviser Approval' | 'Approved' | 'Rejected';

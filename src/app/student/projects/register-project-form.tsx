@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { collection, query } from "firebase/firestore";
 import { addDocumentNonBlocking, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import type { Subject, Advisor } from "@/lib/types";
+import type { Subject, Advisor, Student } from "@/lib/types";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,11 +30,11 @@ const formSchema = z.object({
 
 interface RegisterProjectFormProps {
   subject: Subject;
-  studentId: string;
+  student: Student;
   onFinished: () => void;
 }
 
-export function RegisterProjectForm({ subject, studentId, onFinished }: RegisterProjectFormProps) {
+export function RegisterProjectForm({ subject, student, onFinished }: RegisterProjectFormProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
 
@@ -51,13 +51,20 @@ export function RegisterProjectForm({ subject, studentId, onFinished }: Register
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!student.block || !student.groupNumber) {
+        toast({ variant: 'destructive', title: "Missing Information", description: "Your block or group number is missing."});
+        return;
+    }
+
     const projectsCol = collection(firestore, "capstoneProjects");
     
     addDocumentNonBlocking(projectsCol, {
       ...values,
-      studentIds: [studentId],
+      studentIds: [student.id],
       subjectId: subject.id,
       teacherId: subject.teacherId,
+      block: student.block,
+      groupNumber: student.groupNumber,
       status: 'Pending Teacher Approval',
     });
 

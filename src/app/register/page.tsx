@@ -2,9 +2,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,6 +28,9 @@ import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { setDoc, doc } from 'firebase/firestore';
 import { User, Briefcase, GraduationCap } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 type Role = 'Adviser' | 'Student' | 'Teacher';
 
@@ -60,6 +60,10 @@ export default function RegisterPage() {
   });
 
   const handleRoleSelect = (selectedRole: Role) => {
+    if (selectedRole === 'Student') {
+      router.push('/register/student');
+      return;
+    }
     setRole(selectedRole);
   };
 
@@ -83,9 +87,6 @@ export default function RegisterPage() {
       if (role === 'Adviser') {
         collectionName = 'advisors';
         redirectPath = '/dashboard';
-      } else if (role === 'Student') {
-        collectionName = 'students';
-        redirectPath = '/student';
       } else if (role === 'Teacher') {
         collectionName = 'teachers';
         redirectPath = '/dashboard';
