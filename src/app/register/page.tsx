@@ -68,7 +68,7 @@ export default function RegisterPage() {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!role) return;
+    if (!role || !firestore) return;
     setIsLoading(true);
 
     try {
