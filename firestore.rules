@@ -1,299 +1,299 @@
 
-/**
- * This ruleset enforces a security model for a student-advisor consultation application.
- *
- * Core Philosophy:
- * The security model is built on two primary concepts: strict user ownership for personal
- * profile data (Advisors, Students, Teachers) and shared access for collaborative documents
- * (Consultations, Notes). The default posture is to deny access unless explicitly granted.
- * User enumeration is strictly prohibited.
- *
- * Data Structure:
- * The data is organized into five top-level collections:
- * - /advisors/{advisorId}: Private profiles for advisors.
- * - /students/{studentId}: Private profiles for students.
- * - /teachers/{teacherId}: Private profiles for teachers.
- * - /consultations/{consultationId}: Shared documents representing a meeting.
- * - /notes/{notesId}: Shared documents for notes related to a consultation.
- *
- * Key Security Decisions:
- * - User Profiles (/advisors, /students, /teachers) are strictly private. A user can only access
- *   their own document, identified by their UID. Listing users is disabled to
- *   prevent data leakage and user enumeration attacks.
- * - Shared Documents (/consultations, /notes) use denormalized participant lists
- *   (`advisorId`, `studentIds`) directly on the document to control access. This
- *   is highly performant as it avoids extra database lookups. Any user whose UID
- *   is in the participant list can access the document.
- * - Creation/Deletion of shared documents is restricted. Only advisors can create or
- *   delete consultations and their associated notes, establishing them as the
- *   owners of the event. All participants can update the content.
- * - `list` operations on shared collections are permitted for signed-in users to enable
- *   client-side queries (e.g., "show me all consultations where I am a participant").
- *   However, individual document access is still protected by `get` rules, ensuring
- *   that these queries will only return documents the user is authorized to see.
- *
- * Denormalization for Authorization:
- * To secure /notes, it is assumed that the `advisorId` and `studentIds` from the parent
- * /consultations document are denormalized (copied) onto the /notes document. This is
- * critical because rules for `/notes/{notesId}` cannot look up the corresponding
- * consultation document without a predictable path, making direct ACL checks on the
- * note itself the only secure and performant option.
- */
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+  /**
+  * This ruleset enforces a security model for a student-advisor consultation application.
+  *
+  * Core Philosophy:
+  * The security model is built on two primary concepts: strict user ownership for personal
+  * profile data (Advisors, Students, Teachers) and shared access for collaborative documents
+  * (Consultations, Notes). The default posture is to deny access unless explicitly granted.
+  * User enumeration is strictly prohibited.
+  *
+  * Data Structure:
+  * The data is organized into five top-level collections:
+  * - /advisors/{advisorId}: Private profiles for advisors.
+  * - /students/{studentId}: Private profiles for students.
+  * - /teachers/{teacherId}: Private profiles for teachers.
+  * - /consultations/{consultationId}: Shared documents representing a meeting.
+  * - /notes/{notesId}: Shared documents for notes related to a consultation.
+  *
+  * Key Security Decisions:
+  * - User Profiles (/advisors, /students, /teachers) are strictly private. A user can only access
+  *   their own document, identified by their UID. Listing users is disabled to
+  *   prevent data leakage and user enumeration attacks.
+  * - Shared Documents (/consultations, /notes) use denormalized participant lists
+  *   (`advisorId`, `studentIds`) directly on the document to control access. This
+  *   is highly performant as it avoids extra database lookups. Any user whose UID
+  *   is in the participant list can access the document.
+  * - Creation/Deletion of shared documents is restricted. Only advisors can create or
+  *   delete consultations and their associated notes, establishing them as the
+  *   owners of the event. All participants can update the content.
+  * - `list` operations on shared collections are permitted for signed-in users to enable
+  *   client-side queries (e.g., "show me all consultations where I am a participant").
+  *   However, individual document access is still protected by `get` rules, ensuring
+  *   that these queries will only return documents the user is authorized to see.
+  *
+  * Denormalization for Authorization:
+  * To secure /notes, it is assumed that the `advisorId` and `studentIds` from the parent
+  * /consultations document are denormalized (copied) onto the /notes document. This is
+  * critical because rules for `/notes/{notesId}` cannot look up the corresponding
+  * consultation document without a predictable path, making direct ACL checks on the
+  * note itself the only secure and performant option.
+  */
+  rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
 
-    // -------------------------------------------------------------------------
-    // Helper Functions
-    // -------------------------------------------------------------------------
+      // -------------------------------------------------------------------------
+      // Helper Functions
+      // -------------------------------------------------------------------------
 
-    /**
-     * Returns true if the user is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
+      /**
+      * Returns true if the user is authenticated.
+      */
+      function isSignedIn() {
+        return request.auth != null;
+      }
 
-    /**
-     * Returns true if the requesting user's UID matches the provided userId.
-     * This is the foundation of the user-ownership model.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
+      /**
+      * Returns true if the requesting user's UID matches the provided userId.
+      * This is the foundation of the user-ownership model.
+      */
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
 
-    /**
-     * Checks if the requesting user is the designated advisor on a document.
-     * It checks both 'adviserId' and 'advisorId' for compatibility.
-     */
-    function isAdvisor(docData) {
-      return request.auth.uid == docData.adviserId || request.auth.uid == docData.advisorId;
-    }
-    
-    /**
-     * Checks if the requesting user is an authenticated teacher. This assumes
-     * that a 'teachers' collection exists where teacher documents are stored.
-     * This function is used to grant broad read/write access to consultations.
-     */
-    function isTeacher() {
-      return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
-    }
-    
-    /**
-     * Checks if the requesting user is the designated teacher on a document.
-     */
-    function isTheTeacher(docData) {
-        return request.auth.uid == docData.teacherId;
-    }
-
-
-    /**
-     * Checks if the requesting user is in the list of student participants.
-     */
-    function isStudent(docData) {
-      return request.auth.uid in docData.studentIds;
-    }
-
-    /**
-     * Checks if the user is any kind of participant (advisor or student).
-     * Used to grant read/update access to shared documents.
-     */
-    function isParticipant(docData) {
-      return isAdvisor(docData) || isStudent(docData);
-    }
-    
-    /**
-     * Checks if the user is an involved party in a capstone project.
-     * (Student, Teacher, or the assigned Advisor).
-     */
-    function isProjectParticipant(docData) {
-        return isStudent(docData) || isTheTeacher(docData) || isAdvisor(docData);
-    }
-
-    /**
-     * Validates that a new user profile document has its 'id' field
-     * set to the user's UID, ensuring relational integrity.
-     */
-    function isProfileIdCorrectlyAssigned(userId) {
-      return request.resource.data.id == userId;
-    }
-
-    /**
-     * Validates that a user profile's 'id' field is immutable on update.
-     */
-    function isProfileIdImmutable() {
-      return request.resource.data.id == resource.data.id;
-    }
-
-    /**
-     * Validates that the creator of a consultation is also the advisor.
-     */
-    function isCreatorTheAdvisor() {
-      return request.resource.data.advisorId == request.auth.uid;
-    }
-
-    /**
-     * Validates that the advisor of a consultation cannot be changed on update.
-     * The student list remains mutable to allow for changes in attendance.
-     */
-    function isAdvisorImmutable() {
-      return request.resource.data.advisorId == resource.data.advisorId;
-    }
-    
-    /**
-     * Students can't change key fields after project creation.
-     */
-    function areProjectCoreFieldsImmutable() {
-        return request.resource.data.studentIds == resource.data.studentIds &&
-               request.resource.data.subjectId == resource.data.subjectId &&
-               request.resource.data.teacherId == resource.data.teacherId &&
-               request.resource.data.adviserId == resource.data.adviserId;
-    }
-
-    /**
-     * Validates that the participant list on a note document is immutable.
-     * This prevents users from altering access control after creation.
-     */
-    function areNoteParticipantsImmutable() {
-      return request.resource.data.advisorId == resource.data.advisorId && request.resource.data.studentIds == resource.data.studentIds;
-    }
+      /**
+      * Checks if the requesting user is the designated advisor on a document.
+      * It checks both 'adviserId' and 'advisorId' for compatibility.
+      */
+      function isAdvisor(docData) {
+        return request.auth.uid == docData.adviserId || request.auth.uid == docData.advisorId;
+      }
+      
+      /**
+      * Checks if the requesting user is an authenticated teacher. This assumes
+      * that a 'teachers' collection exists where teacher documents are stored.
+      * This function is used to grant broad read/write access to consultations.
+      */
+      function isTeacher() {
+        return exists(/databases/$(database)/documents/teachers/$(request.auth.uid));
+      }
+      
+      /**
+      * Checks if the requesting user is the designated teacher on a document.
+      */
+      function isTheTeacher(docData) {
+          return request.auth.uid == docData.teacherId;
+      }
 
 
-    // -------------------------------------------------------------------------
-    // Collection: advisors
-    // -------------------------------------------------------------------------
-    /**
-     * @description Advisors can create, read, update, and delete their own profile.
-     * @path /advisors/{advisorId}
-     * @allow (get) An advisor with auth.uid=`abc` reads `/advisors/abc`.
-     * @deny (get) A user with auth.uid=`xyz` tries to read `/advisors/abc`.
-     * @deny (list) Any user tries to list all documents in the `/advisors` collection.
-     * @principle Restricts access to a user's own data tree and prevents user enumeration.
-     */
-    match /advisors/{advisorId} {
-      allow get: if isOwner(advisorId) || isSignedIn(); // Allow others to read for selection.
-      allow list: if isSignedIn();
-      allow create: if isOwner(advisorId) && isProfileIdCorrectlyAssigned(advisorId);
-      allow update: if resource != null && isOwner(advisorId) && isProfileIdImmutable();
-      allow delete: if resource != null && isOwner(advisorId);
-    }
+      /**
+      * Checks if the requesting user is in the list of student participants.
+      */
+      function isStudent(docData) {
+        return request.auth.uid in docData.studentIds;
+      }
+
+      /**
+      * Checks if the user is any kind of participant (advisor or student).
+      * Used to grant read/update access to shared documents.
+      */
+      function isParticipant(docData) {
+        return isAdvisor(docData) || isStudent(docData);
+      }
+      
+      /**
+      * Checks if the user is an involved party in a capstone project.
+      * (Student, Teacher, or the assigned Advisor).
+      */
+      function isProjectParticipant(docData) {
+          return isStudent(docData) || isTheTeacher(docData) || isAdvisor(docData);
+      }
+
+      /**
+      * Validates that a new user profile document has its 'id' field
+      * set to the user's UID, ensuring relational integrity.
+      */
+      function isProfileIdCorrectlyAssigned(userId) {
+        return request.resource.data.id == userId;
+      }
+
+      /**
+      * Validates that a user profile's 'id' field is immutable on update.
+      */
+      function isProfileIdImmutable() {
+        return request.resource.data.id == resource.data.id;
+      }
+
+      /**
+      * Validates that the creator of a consultation is also the advisor.
+      */
+      function isCreatorTheAdvisor() {
+        return request.resource.data.advisorId == request.auth.uid;
+      }
+
+      /**
+      * Validates that the advisor of a consultation cannot be changed on update.
+      * The student list remains mutable to allow for changes in attendance.
+      */
+      function isAdvisorImmutable() {
+        return request.resource.data.advisorId == resource.data.advisorId;
+      }
+      
+      /**
+      * Students can't change key fields after project creation.
+      */
+      function areProjectCoreFieldsImmutable() {
+          return request.resource.data.studentIds == resource.data.studentIds &&
+                request.resource.data.subjectId == resource.data.subjectId &&
+                request.resource.data.teacherId == resource.data.teacherId &&
+                request.resource.data.adviserId == resource.data.adviserId;
+      }
+
+      /**
+      * Validates that the participant list on a note document is immutable.
+      * This prevents users from altering access control after creation.
+      */
+      function areNoteParticipantsImmutable() {
+        return request.resource.data.advisorId == resource.data.advisorId && request.resource.data.studentIds == resource.data.studentIds;
+      }
 
 
-    // -------------------------------------------------------------------------
-    // Collection: students
-    // -------------------------------------------------------------------------
-    /**
-     * @description Students can create, read, update, and delete their own profile.
-     * @path /students/{studentId}
-     * @allow (get) A student with auth.uid=`abc` reads `/students/abc`.
-     * @deny (get) A user with auth.uid=`xyz` tries to read `/students/abc`.
-     * @deny (list) Any user tries to list all documents in the `/students` collection.
-     * @principle Restricts access to a user's own data tree and prevents user enumeration.
-     */
-    match /students/{studentId} {
-      allow get: if isSignedIn();
-      allow list: if false;
-      allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
-      allow update: if resource != null && isOwner(studentId) && isProfileIdImmutable();
-      allow delete: if resource != null && isOwner(studentId);
-    }
+      // -------------------------------------------------------------------------
+      // Collection: advisors
+      // -------------------------------------------------------------------------
+      /**
+      * @description Advisors can create, read, update, and delete their own profile.
+      * @path /advisors/{advisorId}
+      * @allow (get) An advisor with auth.uid=`abc` reads `/advisors/abc`.
+      * @deny (get) A user with auth.uid=`xyz` tries to read `/advisors/abc`.
+      * @deny (list) Any user tries to list all documents in the `/advisors` collection.
+      * @principle Restricts access to a user's own data tree and prevents user enumeration.
+      */
+      match /advisors/{advisorId} {
+        allow get: if isOwner(advisorId) || isSignedIn(); // Allow others to read for selection.
+        allow list: if isSignedIn();
+        allow create: if isOwner(advisorId) && isProfileIdCorrectlyAssigned(advisorId);
+        allow update: if resource != null && isOwner(advisorId) && isProfileIdImmutable();
+        allow delete: if resource != null && isOwner(advisorId);
+      }
 
-    // -------------------------------------------------------------------------
-    // Collection: teachers
-    // -------------------------------------------------------------------------
-    /**
-     * @description Teachers can create, read, update, and delete their own profile.
-     * @path /teachers/{teacherId}
-     * @allow (get) A teacher with auth.uid=`abc` reads `/teachers/abc`.
-     * @deny (get) A user with auth.uid=`xyz` tries to read `/teachers/abc`.
-     * @deny (list) Any user tries to list all documents in the `/teachers` collection.
-     * @principle Restricts access to a user's own data tree and prevents user enumeration.
-     */
-    match /teachers/{teacherId} {
-      allow get: if isOwner(teacherId);
-      allow list: if false;
-      allow create: if isOwner(teacherId) && isProfileIdCorrectlyAssigned(teacherId);
-      allow update: if resource != null && isOwner(teacherId) && isProfileIdImmutable();
-      allow delete: if resource != null && isOwner(teacherId);
-    }
 
-    // -------------------------------------------------------------------------
-    // Collection: subjects
-    // -------------------------------------------------------------------------
-    /**
-     * @description Teachers can create and manage their own subjects. Students and advisors can read subjects.
-     * @path /subjects/{subjectId}
-     */
-    match /subjects/{subjectId} {
-      allow get, list: if isSignedIn();
-      allow create: if isTeacher() && isTheTeacher(request.resource.data);
-      allow update, delete: if isTeacher() && isTheTeacher(resource.data);
-    }
-    
-    // -------------------------------------------------------------------------
-    // Collection: capstoneProjects
-    // -------------------------------------------------------------------------
-    /**
-     * @description Students create projects. Teacher and selected Advisor must approve.
-     * @path /capstoneProjects/{projectId}
-     */
-    match /capstoneProjects/{projectId} {
+      // -------------------------------------------------------------------------
+      // Collection: students
+      // -------------------------------------------------------------------------
+      /**
+      * @description Students can create, read, update, and delete their own profile.
+      * @path /students/{studentId}
+      * @allow (get) A student with auth.uid=`abc` reads `/students/abc`.
+      * @deny (get) A user with auth.uid=`xyz` tries to read `/students/abc`.
+      * @deny (list) Any user tries to list all documents in the `/students` collection.
+      * @principle Restricts access to a user's own data tree and prevents user enumeration.
+      */
+      match /students/{studentId} {
+        allow get: if isSignedIn();
+        allow list: if false;
+        allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
+        allow update: if resource != null && isOwner(studentId) && isProfileIdImmutable();
+        allow delete: if resource != null && isOwner(studentId);
+      }
+
+      // -------------------------------------------------------------------------
+      // Collection: teachers
+      // -------------------------------------------------------------------------
+      /**
+      * @description Teachers can create, read, update, and delete their own profile.
+      * @path /teachers/{teacherId}
+      * @allow (get) A teacher with auth.uid=`abc` reads `/teachers/abc`.
+      * @deny (get) A user with auth.uid=`xyz` tries to read `/teachers/abc`.
+      * @deny (list) Any user tries to list all documents in the `/teachers` collection.
+      * @principle Restricts access to a user's own data tree and prevents user enumeration.
+      */
+      match /teachers/{teacherId} {
+        allow get: if isOwner(teacherId);
+        allow list: if false;
+        allow create: if isOwner(teacherId) && isProfileIdCorrectlyAssigned(teacherId);
+        allow update: if resource != null && isOwner(teacherId) && isProfileIdImmutable();
+        allow delete: if resource != null && isOwner(teacherId);
+      }
+
+      // -------------------------------------------------------------------------
+      // Collection: subjects
+      // -------------------------------------------------------------------------
+      /**
+      * @description Teachers can create and manage their own subjects. Students and advisors can read subjects.
+      * @path /subjects/{subjectId}
+      */
+      match /subjects/{subjectId} {
         allow get, list: if isSignedIn();
-        allow create: if isStudent(request.resource.data);
-        // Only teacher or advisor can update status. Student can only update title/details if not approved.
-        allow update: if (isTheTeacher(resource.data) || isAdvisor(resource.data)) ||
-                         (isStudent(resource.data) && resource.data.status != 'Approved' && areProjectCoreFieldsImmutable());
-        allow delete: if isStudent(resource.data);
-    }
+        allow create: if isTeacher() && isTheTeacher(request.resource.data);
+        allow update, delete: if isTeacher() && isTheTeacher(resource.data);
+      }
+      
+      // -------------------------------------------------------------------------
+      // Collection: capstoneProjects
+      // -------------------------------------------------------------------------
+      /**
+      * @description Students create projects. Teacher and selected Advisor must approve.
+      * @path /capstoneProjects/{projectId}
+      */
+      match /capstoneProjects/{projectId} {
+          allow get, list: if isSignedIn();
+          allow create: if isStudent(request.resource.data);
+          // Only teacher or advisor can update status. Student can only update title/details if not approved.
+          allow update: if (isTheTeacher(resource.data) || isAdvisor(resource.data)) ||
+                          (isStudent(resource.data) && resource.data.status != 'Approved' && areProjectCoreFieldsImmutable());
+          allow delete: if isStudent(resource.data);
+      }
 
 
-    // -------------------------------------------------------------------------
-    // Collection: consultations
-    // -------------------------------------------------------------------------
-    /**
-     * @description Access is granted to the advisor or any student listed in the `studentIds` array.
-     * Teachers have read/write access to all consultations.
-     * Only the advisor can create or delete consultations. Students can create 'Pending' requests.
-     * @path /consultations/{consultationId}
-     * @allow (get) An advisor or student whose UID is in `studentIds` reads a document.
-     * @allow (get) A teacher reads any consultation document.
-     * @allow (create) An advisor creates a consultation, or a student creates a request.
-     * @deny (create) A user not involved in the project tries to create a consultation.
-     * @deny (delete) A student tries to delete a consultation they are part of.
-     * @principle Enforces shared access via a denormalized participant list on the document.
-     */
-    match /consultations/{consultationId} {
-      allow get: if isParticipant(resource.data) || isTeacher();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && (isCreatorTheAdvisor() || (isStudent(request.resource.data) && request.resource.data.status == 'Pending Approval'));
-      allow update: if resource != null && (isParticipant(resource.data) || isTeacher()) && isAdvisorImmutable();
-      allow delete: if resource != null && isAdvisor(resource.data);
-    }
+      // -------------------------------------------------------------------------
+      // Collection: consultations
+      // -------------------------------------------------------------------------
+      /**
+      * @description Access is granted to the advisor or any student listed in the `studentIds` array.
+      * Teachers have read/write access to all consultations.
+      * Only the advisor can create or delete consultations. Students can create 'Pending' requests.
+      * @path /consultations/{consultationId}
+      * @allow (get) An advisor or student whose UID is in `studentIds` reads a document.
+      * @allow (get) A teacher reads any consultation document.
+      * @allow (create) An advisor creates a consultation, or a student creates a request.
+      * @deny (create) A user not involved in the project tries to create a consultation.
+      * @deny (delete) A student tries to delete a consultation they are part of.
+      * @principle Enforces shared access via a denormalized participant list on the document.
+      */
+      match /consultations/{consultationId} {
+        allow get: if isParticipant(resource.data) || isTeacher();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn() && (isCreatorTheAdvisor() || (isStudent(request.resource.data) && request.resource.data.status == 'Pending Approval' && request.auth.uid in request.resource.data.studentIds && exists(/databases/$(database)/documents/advisors/$(request.resource.data.advisorId))));
+        allow update: if resource != null && (isParticipant(resource.data) || isTeacher()) && isAdvisorImmutable();
+        allow delete: if resource != null && isAdvisor(resource.data);
+      }
 
 
-    // -------------------------------------------------------------------------
-    // Collection: notes
-    // -------------------------------------------------------------------------
-    /**
-     * @description Access is controlled by participant fields (`advisorId`, `studentIds`)
-     * denormalized from the parent consultation. Only the advisor can delete. Teachers
-     * can read/write any note.
-     * @path /notes/{notesId}
-     * @allow (get) An advisor or student whose UID is in the note's participant list reads it.
-     * @allow (get) A teacher reads any note.
-     * @allow (create) A participant creates a note, correctly identifying all participants.
-     * @deny (update) A user tries to change the `advisorId` or `studentIds` after creation.
-     * @deny (get) A user not listed as a participant tries to read the note.
-     * @principle Secures a sub-resource using a denormalized Access Control List (ACL) for performance and security.
-     */
-    match /notes/{notesId} {
-      allow get: if isParticipant(resource.data) || isTeacher();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn() && isParticipant(request.resource.data);
-      allow update: if resource != null && (isParticipant(resource.data) || isTeacher()) && areNoteParticipantsImmutable();
-      allow delete: if resource != null && isAdvisor(resource.data);
+      // -------------------------------------------------------------------------
+      // Collection: notes
+      // -------------------------------------------------------------------------
+      /**
+      * @description Access is controlled by participant fields (`advisorId`, `studentIds`)
+      * denormalized from the parent consultation. Only the advisor can delete. Teachers
+      * can read/write any note.
+      * @path /notes/{notesId}
+      * @allow (get) An advisor or student whose UID is in the note's participant list reads it.
+      * @allow (get) A teacher reads any note.
+      * @allow (create) A participant creates a note, correctly identifying all participants.
+      * @deny (update) A user tries to change the `advisorId` or `studentIds` after creation.
+      * @deny (get) A user not listed as a participant tries to read the note.
+      * @principle Secures a sub-resource using a denormalized Access Control List (ACL) for performance and security.
+      */
+      match /notes/{notesId} {
+        allow get: if isParticipant(resource.data) || isTeacher();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn() && isParticipant(request.resource.data);
+        allow update: if resource != null && (isParticipant(resource.data) || isTeacher()) && areNoteParticipantsImmutable();
+        allow delete: if resource != null && isAdvisor(resource.data);
+      }
     }
   }
-}
 
-    
+      
