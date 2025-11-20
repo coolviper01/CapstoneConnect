@@ -205,7 +205,7 @@
         allow list: if isTeacher(); // Allow teachers to list students for approval.
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
         allow update: if (isOwner(studentId) && isProfileIdImmutable()) || 
-                       ((isTeacher() || isAdvisor(resource.data)) && request.resource.data.keys().hasOnly(["status", "adviserId"]));
+                         (isTeacher() && request.resource.data.keys().hasOnly(["status"]));
         allow delete: if resource != null && isOwner(studentId);
       }
 
