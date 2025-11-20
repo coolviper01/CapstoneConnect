@@ -335,7 +335,7 @@ function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: 
                                 </TooltipProvider>
                             </>
                         ) : (
-                             <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
+                             advisor && <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
                         )}
                         </CardFooter>
                     </Card>
