@@ -1,14 +1,16 @@
-import type { Consultation, Student } from './types';
+import type { Student } from './types';
+import { addDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
+import { type Firestore } from 'firebase/firestore';
 
 export const students: Student[] = [
-  { id: '1', name: 'Alice Johnson', avatarUrl: 'https://picsum.photos/seed/student1/100/100' },
-  { id: '2', name: 'Bob Williams', avatarUrl: 'https://picsum.photos/seed/student2/100/100' },
-  { id: '3', name: 'Charlie Brown', avatarUrl: 'https://picsum.photos/seed/student3/100/100' },
-  { id: '4', name: 'Diana Miller', avatarUrl: 'https://picsum.photos/seed/student4/100/100' },
-  { id: '5', name: 'Ethan Davis', avatarUrl: 'https://picsum.photos/seed/student5/100/100' },
+  { id: 'student-1', name: 'Alice Johnson', avatarUrl: 'https://picsum.photos/seed/student1/100/100' },
+  { id: 'student-2', name: 'Bob Williams', avatarUrl: 'https://picsum.photos/seed/student2/100/100' },
+  { id: 'student-3', name: 'Charlie Brown', avatarUrl: 'https://picsum.photos/seed/student3/100/100' },
+  { id: 'student-4', name: 'Diana Miller', avatarUrl: 'https://picsum.photos/seed/student4/100/100' },
+  { id: 'student-5', name: 'Ethan Davis', avatarUrl: 'https://picsum.photos/seed/student5/100/100' },
 ];
 
-export const consultations: Consultation[] = [
+export const consultations = [
   {
     id: '1',
     semester: '1st Semester',
@@ -22,6 +24,8 @@ export const consultations: Consultation[] = [
     projectDetails: 'The project aims to develop a sophisticated recommendation system for an e-commerce platform using machine learning algorithms. It will analyze user behavior, purchase history, and product attributes to provide personalized product suggestions. Key technologies include Python, TensorFlow, and collaborative filtering techniques.',
     status: 'Scheduled',
     students: [students[0], students[1]],
+    studentIds: [students[0].id, students[1].id],
+    advisorId: 'advisor-1',
   },
   {
     id: '2',
@@ -36,6 +40,8 @@ export const consultations: Consultation[] = [
     projectDetails: 'A cross-platform mobile application for real-time health monitoring. The app will connect to wearable sensors to track vital signs like heart rate and SpO2. Data will be visualized for the user and can be shared with healthcare providers. The tech stack includes React Native and Firebase.',
     status: 'Completed',
     students: [students[2], students[3]],
+    studentIds: [students[2].id, students[3].id],
+    advisorId: 'advisor-1',
     notes: 'Discussed the need for robust data encryption for user privacy. The team needs to finalize the UI/UX mockups for the next meeting. Progress is on track.',
     attendees: [
       { studentId: '3', signature: 'Charlie Brown' },
@@ -55,9 +61,34 @@ export const consultations: Consultation[] = [
     projectDetails: 'This project focuses on creating a cost-effective smart home system using IoT devices. Users can control lights, appliances, and security cameras remotely via a web dashboard. The system will be built on Raspberry Pi and MQTT protocol.',
     status: 'Approved',
     students: [students[4]],
+    studentIds: [students[4].id],
+    advisorId: 'advisor-2',
      notes: 'Project is complete and meets all requirements. Approved for final presentation.',
     attendees: [
       { studentId: '5', signature: 'Ethan Davis' },
     ],
   },
 ];
+
+
+/**
+ * Seeds the database with initial data.
+ * This is a one-time operation.
+ */
+export async function seedDatabase(db: Firestore) {
+  const consultationsCollection = collection(db, 'consultations');
+  const snapshot = await getDocs(consultationsCollection);
+  if (snapshot.empty) {
+    console.log('Seeding database...');
+    const batch = writeBatch(db);
+    consultations.forEach(consultationData => {
+        const { id, ...data } = consultationData;
+        const docRef = doc(consultationsCollection, id);
+        batch.set(docRef, data);
+    });
+    await batch.commit();
+    console.log('Database seeded!');
+  } else {
+    console.log('Database already seeded.');
+  }
+}

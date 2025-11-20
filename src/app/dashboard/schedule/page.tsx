@@ -24,6 +24,9 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { addDocumentNonBlocking, useFirestore } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { students as allStudents } from "@/lib/data";
 
 const formSchema = z.object({
   semester: z.string().min(1, "Semester is required"),
@@ -39,6 +42,8 @@ const formSchema = z.object({
 
 export default function SchedulePage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,7 +59,22 @@ export default function SchedulePage() {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+    const consultationsCol = collection(firestore, "consultations");
+    
+    // In a real app, you'd have a way to select students.
+    // For now, we'll assign the first two students from the static list.
+    const assignedStudents = allStudents.slice(0, 2);
+    
+    addDocumentNonBlocking(consultationsCol, {
+      ...values,
+      date: values.date.toISOString().split('T')[0], // format date as YYYY-MM-DD
+      status: "Scheduled",
+      students: assignedStudents,
+      studentIds: assignedStudents.map(s => s.id),
+      // In a real app, this would be the logged-in advisor's ID
+      advisorId: "advisor-1",
+    });
+
     toast({
       title: "Consultation Scheduled!",
       description: "The new consultation has been added to the dashboard.",
@@ -131,7 +151,7 @@ export default function SchedulePage() {
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select an academic year" />
-                            </SelectTrigger>
+                            </Trigger>
                             </FormControl>
                             <SelectContent>
                             <SelectItem value="2024-2025">2024-2025</SelectItem>

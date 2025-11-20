@@ -1,3 +1,4 @@
+'use client';
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { consultations } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Eye, Search } from "lucide-react";
 import {
@@ -22,8 +22,15 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import type { Consultation } from "@/lib/types";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
+  const firestore = useFirestore();
+  const consultationsQuery = useMemoFirebase(() => collection(firestore, 'consultations'), [firestore]);
+  const { data: consultations, isLoading } = useCollection<Consultation>(consultationsQuery);
+
   const getBadgeVariant = (status: Consultation['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'Approved':
@@ -38,6 +45,51 @@ export default function DashboardPage() {
         return 'secondary';
     }
   };
+
+  const renderTableRows = () => {
+    if (isLoading) {
+      return Array.from({ length: 3 }).map((_, i) => (
+        <TableRow key={i}>
+          <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+          <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+          <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-32" /></TableCell>
+          <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+          <TableCell className="text-right"><Skeleton className="h-9 w-20 ml-auto" /></TableCell>
+        </TableRow>
+      ));
+    }
+
+    if (!consultations || consultations.length === 0) {
+        return (
+            <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                    No consultations found.
+                </TableCell>
+            </TableRow>
+        );
+    }
+
+    return consultations.map((consultation) => (
+      <TableRow key={consultation.id}>
+        <TableCell className="font-medium">{consultation.capstoneTitle}</TableCell>
+        <TableCell className="hidden md:table-cell">{new Date(consultation.date).toLocaleDateString()}</TableCell>
+        <TableCell className="hidden lg:table-cell">{consultation.startTime} - {consultation.endTime}</TableCell>
+        <TableCell>
+          <Badge variant={getBadgeVariant(consultation.status)}>
+            {consultation.status}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-right">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/dashboard/consultations/${consultation.id}`}>
+              <Eye className="mr-2 h-4 w-4" />
+              View
+            </Link>
+          </Button>
+        </TableCell>
+      </TableRow>
+    ));
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -78,26 +130,7 @@ export default function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {consultations.map((consultation) => (
-                <TableRow key={consultation.id}>
-                  <TableCell className="font-medium">{consultation.capstoneTitle}</TableCell>
-                  <TableCell className="hidden md:table-cell">{new Date(consultation.date).toLocaleDateString()}</TableCell>
-                  <TableCell className="hidden lg:table-cell">{consultation.startTime} - {consultation.endTime}</TableCell>
-                  <TableCell>
-                    <Badge variant={getBadgeVariant(consultation.status)}>
-                      {consultation.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={`/dashboard/consultations/${consultation.id}`}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        View
-                      </Link>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {renderTableRows()}
             </TableBody>
           </Table>
         </CardContent>

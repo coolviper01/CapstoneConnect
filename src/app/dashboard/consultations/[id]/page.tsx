@@ -1,4 +1,4 @@
-import { consultations } from "@/lib/data";
+'use client';
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -8,16 +8,90 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import TalkingPoints from "./talking-points";
+import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import type { Consultation, Attendee } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import React, { useState, useEffect, useCallback } from "react";
+import { debounce } from 'lodash';
 
-export default async function ConsultationDetailPage({ params }: { params: { id: string } }) {
-  const consultation = consultations.find((c) => c.id === params.id);
+export default function ConsultationDetailPage({ params }: { params: { id: string } }) {
+  const firestore = useFirestore();
+  const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", params.id), [firestore, params.id]);
+  const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
+  
+  const [notes, setNotes] = useState(consultation?.notes || "");
+  const [attendees, setAttendees] = useState<Attendee[]>(consultation?.attendees || []);
+
+  useEffect(() => {
+    if (consultation) {
+      setNotes(consultation.notes || "");
+      setAttendees(consultation.attendees || []);
+    }
+  }, [consultation]);
+
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('');
+  }
+
+  // Debounced function to save notes to Firestore
+  const debouncedSaveNotes = useCallback(
+    debounce((newNotes: string) => {
+      if (consultationRef) {
+        setDoc(consultationRef, { notes: newNotes }, { merge: true }).catch(error => {
+          console.error("Error updating notes:", error);
+        });
+      }
+    }, 1000), // 1-second debounce delay
+    [consultationRef]
+  );
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newNotes = e.target.value;
+    setNotes(newNotes);
+    debouncedSaveNotes(newNotes);
+  };
+  
+  const handleSignatureChange = (studentId: string, signature: string) => {
+    const newAttendees = [...attendees];
+    const attendeeIndex = newAttendees.findIndex(a => a.studentId === studentId);
+    if (attendeeIndex > -1) {
+      newAttendees[attendeeIndex].signature = signature;
+    } else {
+      newAttendees.push({ studentId, signature });
+    }
+    setAttendees(newAttendees);
+  };
+
+  const saveAttendance = () => {
+     if (consultationRef) {
+      setDoc(consultationRef, { attendees: attendees }, { merge: true }).catch(error => {
+          console.error("Error updating attendance:", error);
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+       <div className="flex flex-col gap-6">
+          <PageHeader title={<Skeleton className="h-9 w-3/4" />}><Skeleton className="h-10 w-44" /></PageHeader>
+          <div className="grid md:grid-cols-3 gap-6">
+              <div className="md:col-span-1 flex flex-col gap-6">
+                <Card><CardHeader><Skeleton className="h-6 w-1/2 mb-2" /><Skeleton className="h-4 w-1/4" /></CardHeader><CardContent className="space-y-4"><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-full" /><Skeleton className="h-5 w-full" /></CardContent></Card>
+                <Card><CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader><CardContent><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6 mt-2" /></CardContent></Card>
+              </div>
+              <div className="md:col-span-2 flex flex-col gap-6">
+                <Card><CardHeader><Skeleton className="h-6 w-1/2 mb-2" /><Skeleton className="h-4 w-3/4" /></CardHeader><CardContent><Skeleton className="h-32 w-full" /></CardContent></Card>
+                <Card><CardHeader><Skeleton className="h-6 w-1/2 mb-2" /><Skeleton className="h-4 w-3/4" /></CardHeader><CardContent className="space-y-4"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></CardContent><CardFooter><Skeleton className="h-10 w-32" /></CardFooter></Card>
+              </div>
+          </div>
+       </div>
+    )
+  }
 
   if (!consultation) {
     notFound();
-  }
-  
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('');
   }
 
   return (
@@ -69,11 +143,16 @@ export default async function ConsultationDetailPage({ params }: { params: { id:
             <CardHeader>
               <CardTitle>Discussion Notes</CardTitle>
               <CardDescription>
-                Collaboratively record notes during the consultation.
+                Notes are saved automatically as you type.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Textarea defaultValue={consultation.notes} className="min-h-[200px]" placeholder="Start typing notes here..." />
+              <Textarea 
+                value={notes}
+                onChange={handleNotesChange}
+                className="min-h-[200px]" 
+                placeholder="Start typing notes here..." 
+              />
             </CardContent>
           </Card>
 
@@ -93,13 +172,14 @@ export default async function ConsultationDetailPage({ params }: { params: { id:
                   <Input 
                     className="w-64" 
                     placeholder="Type name to sign" 
-                    defaultValue={consultation.attendees?.find(a => a.studentId === student.id)?.signature}
+                    value={attendees.find(a => a.studentId === student.id)?.signature || ''}
+                    onChange={(e) => handleSignatureChange(student.id, e.target.value)}
                   />
                 </div>
               ))}
             </CardContent>
             <CardFooter>
-              <Button>Save Attendance</Button>
+              <Button onClick={saveAttendance}>Save Attendance</Button>
             </CardFooter>
           </Card>
         </div>
