@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, UserPlus } from "lucide-react";
 import { Logo } from "@/components/logo";
 
 export default function Home() {
@@ -15,17 +15,13 @@ export default function Home() {
         <Logo />
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Button variant="ghost" asChild>
-            <Link
-              href="/login"
-            >
-              Teacher
+            <Link href="/login">
+              Login
             </Link>
           </Button>
-          <Button variant="ghost" asChild>
-            <Link
-              href="/login"
-            >
-              Student
+          <Button asChild>
+            <Link href="/register">
+              Register
             </Link>
           </Button>
         </nav>
@@ -56,13 +52,14 @@ export default function Home() {
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
                 <Button asChild size="lg">
                   <Link href="/login">
-                    Adviser Login
+                    Get Started
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="secondary">
-                  <Link href="/login">
-                    Student Login
+                  <Link href="/register">
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Sign Up
                   </Link>
                 </Button>
               </div>
