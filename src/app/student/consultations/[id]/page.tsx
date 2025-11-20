@@ -3,11 +3,11 @@ import { useParams } from "next/navigation";
 import Link from 'next/link';
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users, FileText, Code, QrCode, ScanLine, CheckCircle, AlertTriangle, Lightbulb } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, FileText, Code, QrCode, ScanLine, CheckCircle, AlertTriangle, Lightbulb, Printer, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useUser } from "@/firebase";
-import { collection, doc, query, where, arrayUnion } from "firebase/firestore";
-import type { Consultation, Student, DiscussionPoint, Attendee } from "@/lib/types";
+import { collection, doc, query, where, arrayUnion, getDoc } from "firebase/firestore";
+import type { Consultation, Student, DiscussionPoint, Attendee, Advisor } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import Webcam from "react-webcam";
 import jsQR from "jsqr";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { ConsultationReport } from "@/app/dashboard/consultation-report";
 
 function AttendanceScanner({ onCodeScanned, onClose }: { onCodeScanned: (code: string) => void; onClose: () => void; }) {
   const webcamRef = useRef<Webcam>(null);
@@ -114,6 +115,8 @@ export default function StudentConsultationDetailPage() {
   const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
   const [isScannerOpen, setScannerOpen] = useState(false);
   const [manualCode, setManualCode] = useState("");
+  const [isReportOpen, setReportOpen] = useState(false);
+  const [advisor, setAdvisor] = useState<Advisor | null>(null);
 
   const studentIds = useMemo(() => consultation?.studentIds || [], [consultation]);
   const studentsQuery = useMemoFirebase(() => {
@@ -127,11 +130,26 @@ export default function StudentConsultationDetailPage() {
     return consultation.attendees.some(a => a.studentId === user.uid);
   }, [user, consultation?.attendees]);
 
+  const isConsultationClosed = consultation?.status === 'Completed';
+
   useEffect(() => {
     if (consultation) {
       setDiscussionPoints(Array.isArray(consultation.discussionPoints) ? consultation.discussionPoints : []);
+      
+      const fetchAdvisor = async () => {
+          if (consultation.advisorId && firestore) {
+              const advisorDoc = await getDoc(doc(firestore, "advisors", consultation.advisorId));
+              if (advisorDoc.exists()) {
+                  setAdvisor(advisorDoc.data() as Advisor);
+              }
+          }
+      };
+
+      if (isConsultationClosed) {
+          fetchAdvisor();
+      }
     }
-  }, [consultation]);
+  }, [consultation, isConsultationClosed, firestore]);
 
   const updateDiscussionPoint = (id: string, response: string) => {
     const newPoints = discussionPoints.map(p => p.id === id ? { ...p, studentResponse: response, studentUpdateStatus: 'Pending' as const } : p);
@@ -146,7 +164,7 @@ export default function StudentConsultationDetailPage() {
   const saveUpdates = () => {
     if (consultationRef) {
       updateDocumentNonBlocking(consultationRef, { discussionPoints: discussionPoints });
-      toast({ title: 'Updates Saved!', description: 'Your responses have been saved and sent for adviser review.' });
+      toast({ title: 'Updates Saved!', description: 'Your responses have been sent for adviser review.' });
     }
   }
   
@@ -248,6 +266,16 @@ export default function StudentConsultationDetailPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title={consultation.capstoneTitle} description="Consultation Details" />
       
+      {isConsultationClosed && (
+          <Alert>
+            <Lock className="h-4 w-4" />
+            <AlertTitle>Consultation Closed</AlertTitle>
+            <AlertDescription>
+                This consultation has been marked as complete by your adviser. No further updates can be made.
+            </AlertDescription>
+          </Alert>
+      )}
+
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-1 flex flex-col gap-6">
           <Card>
@@ -281,55 +309,59 @@ export default function StudentConsultationDetailPage() {
               )}
             </CardContent>
           </Card>
-          <Card>
-              <CardHeader>
-                  <CardTitle>Attendance Check-in</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                  {hasAttended ? (
-                      <Alert>
-                        <CheckCircle className="h-4 w-4" />
-                        <AlertTitle>You are Checked In!</AlertTitle>
-                        <AlertDescription>
-                            Your attendance for this consultation has been recorded.
-                        </AlertDescription>
-                      </Alert>
-                  ) : consultation.isAttendanceOpen ? (
-                      <>
-                          <Button className="w-full" onClick={() => setScannerOpen(true)}><QrCode className="mr-2 h-4 w-4"/> Scan QR Code</Button>
-                          <div className="flex items-center gap-2">
-                            <hr className="flex-grow border-t"/>
-                            <span className="text-xs text-muted-foreground">OR</span>
-                            <hr className="flex-grow border-t"/>
-                          </div>
-                          <div className="space-y-2">
-                             <Input 
-                                placeholder="Enter 6-digit code" 
-                                value={manualCode} 
-                                onChange={(e) => setManualCode(e.target.value)}
-                                maxLength={6}
-                              />
-                             <Button className="w-full" variant="secondary" onClick={() => handleCheckIn(manualCode)} disabled={manualCode.length !== 6}>Submit Code</Button>
-                          </div>
-                      </>
-                  ) : (
-                      <Alert>
-                          <ScanLine className="h-4 w-4" />
-                          <AlertTitle>Attendance Closed</AlertTitle>
-                          <AlertDescription>
-                              The attendance session is not currently active.
-                          </AlertDescription>
-                      </Alert>
-                  )}
-              </CardContent>
-          </Card>
+          {!isConsultationClosed && (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Attendance Check-in</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {hasAttended ? (
+                        <Alert>
+                            <CheckCircle className="h-4 w-4" />
+                            <AlertTitle>You are Checked In!</AlertTitle>
+                            <AlertDescription>
+                                Your attendance for this consultation has been recorded.
+                            </AlertDescription>
+                        </Alert>
+                    ) : consultation.isAttendanceOpen ? (
+                        <>
+                            <Button className="w-full" onClick={() => setScannerOpen(true)}><QrCode className="mr-2 h-4 w-4"/> Scan QR Code</Button>
+                            <div className="flex items-center gap-2">
+                                <hr className="flex-grow border-t"/>
+                                <span className="text-xs text-muted-foreground">OR</span>
+                                <hr className="flex-grow border-t"/>
+                            </div>
+                            <div className="space-y-2">
+                                <Input 
+                                    placeholder="Enter 6-digit code" 
+                                    value={manualCode} 
+                                    onChange={(e) => setManualCode(e.target.value)}
+                                    maxLength={6}
+                                />
+                                <Button className="w-full" variant="secondary" onClick={() => handleCheckIn(manualCode)} disabled={manualCode.length !== 6}>Submit Code</Button>
+                            </div>
+                        </>
+                    ) : (
+                        <Alert>
+                            <ScanLine className="h-4 w-4" />
+                            <AlertTitle>Attendance Closed</AlertTitle>
+                            <AlertDescription>
+                                The attendance session is not currently active.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                </CardContent>
+            </Card>
+          )}
         </div>
         <div className="md:col-span-2 flex flex-col gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Discussion Points & Action Items</CardTitle>
               <CardDescription>
-                Review comments from your adviser and update your progress.
+                {isConsultationClosed
+                    ? "This is the final record of the discussion."
+                    : "Review comments from your adviser and update your progress."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -359,7 +391,7 @@ export default function StudentConsultationDetailPage() {
                        value={point.studentResponse || ""}
                        onChange={(e) => updateDiscussionPoint(point.id, e.target.value)}
                        placeholder="Describe the activity you made or provide an update..."
-                       readOnly={point.studentUpdateStatus === 'Approved'}
+                       readOnly={isConsultationClosed || point.studentUpdateStatus === 'Approved'}
                      />
                    </div>
                    
@@ -369,6 +401,7 @@ export default function StudentConsultationDetailPage() {
                         <Select
                             value={point.status}
                             onValueChange={(value: 'To Do' | 'On-going' | 'Done') => updateDiscussionStatus(point.id, value)}
+                            disabled={isConsultationClosed}
                         >
                             <SelectTrigger className="w-[180px]">
                                 <SelectValue placeholder="Set status" />
@@ -396,7 +429,13 @@ export default function StudentConsultationDetailPage() {
             </CardContent>
             {(discussionPoints && discussionPoints.length > 0) && (
               <CardFooter>
-                <Button onClick={saveUpdates}>Save & Submit Updates</Button>
+                {isConsultationClosed ? (
+                    <Button onClick={() => setReportOpen(true)}>
+                        <Printer className="mr-2 h-4 w-4" /> Print Consultation Form
+                    </Button>
+                ) : (
+                    <Button onClick={saveUpdates}>Save & Submit Updates</Button>
+                )}
               </CardFooter>
             )}
           </Card>
@@ -411,6 +450,19 @@ export default function StudentConsultationDetailPage() {
             <AttendanceScanner onCodeScanned={handleCheckIn} onClose={() => setScannerOpen(false)} />
           </DialogContent>
       </Dialog>
+      
+      <Dialog open={isReportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-4xl">
+            <DialogHeader>
+                <DialogTitle>Consultation Report</DialogTitle>
+                <DialogDescription>
+                    This is a printable summary of the completed consultation.
+                </DialogDescription>
+            </DialogHeader>
+            {advisor && consultation && <ConsultationReport consultation={consultation} advisor={advisor} />}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
