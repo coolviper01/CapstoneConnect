@@ -18,10 +18,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking, useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
-import { collection, doc, query } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import type { CapstoneProject, Subject } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import React from 'react';
 
 const formSchema = z.object({
   agenda: z.string().min(20, 'Please provide a more detailed agenda (min. 20 characters).'),
@@ -41,7 +42,7 @@ export default function RequestConsultationPage() {
   const subjectsQuery = useMemoFirebase(() => collection(firestore, 'subjects'), [firestore]);
   const { data: subjects } = useCollection<Subject>(subjectsQuery);
 
-  const subject = useMemoFirebase(() => {
+  const subject = React.useMemo(() => {
     if (!project || !subjects) return null;
     return subjects.find(s => s.id === project.subjectId);
   }, [project, subjects]);
