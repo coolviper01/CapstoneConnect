@@ -79,10 +79,12 @@
         "id": { "type": "string", "description": "Unique identifier for the Subject entity." },
         "name": { "type": "string", "description": "The name of the subject." },
         "yearLevel": { "type": "string", "description": "The year level the subject is for." },
+        "semester": { "type": "string", "description": "The semester the subject is offered in (e.g., '1st Semester', '2nd Semester', 'Summer')." },
+        "academicYear": { "type": "string", "description": "The academic year the subject is offered (e.g., '2024-2025')." },
         "blocks": { "type": "array", "description": "List of blocks or sections taking the subject.", "items": { "type": "string" } },
         "teacherId": { "type": "string", "description": "Reference to the Teacher who created the subject. (Relationship: Teacher 1:N Subject)" }
       },
-      "required": [ "id", "name", "yearLevel", "blocks", "teacherId" ]
+      "required": [ "id", "name", "yearLevel", "semester", "academicYear", "blocks", "teacherId" ]
     },
     "CapstoneProject": {
       "$schema": "http://json-schema.org/draft-07/schema#",

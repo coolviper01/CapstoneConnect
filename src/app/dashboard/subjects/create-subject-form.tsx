@@ -24,6 +24,8 @@ import { TagInput } from '@/components/ui/tag-input';
 const formSchema = z.object({
   name: z.string().min(3, "Subject name must be at least 3 characters."),
   yearLevel: z.string().min(3, "Year level must be at least 3 characters."),
+  academicYear: z.string().regex(/^\d{4}-\d{4}$/, "Academic year must be in YYYY-YYYY format."),
+  semester: z.string().min(1, "Semester is required."),
   blocks: z.array(z.string()).min(1, "You must specify at least one block/section."),
 });
 
@@ -41,6 +43,8 @@ export function CreateSubjectForm({ onFinished }: CreateSubjectFormProps) {
     defaultValues: {
       name: "",
       yearLevel: "",
+      academicYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      semester: "",
       blocks: [],
     },
   });
@@ -82,6 +86,34 @@ export function CreateSubjectForm({ onFinished }: CreateSubjectFormProps) {
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="academicYear"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Academic Year</FormLabel>
+                <FormControl>
+                    <Input placeholder="e.g., 2024-2025" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+            <FormField
+            control={form.control}
+            name="semester"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Semester</FormLabel>
+                <FormControl>
+                    <Input placeholder="e.g., 1st Semester" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
         <FormField
           control={form.control}
           name="yearLevel"

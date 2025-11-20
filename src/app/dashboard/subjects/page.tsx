@@ -69,7 +69,7 @@ export default function TeacherSubjectsPage() {
            <Card key={subject.id}>
             <CardHeader>
                 <CardTitle>{subject.name}</CardTitle>
-                <CardDescription>{subject.yearLevel}</CardDescription>
+                <CardDescription>{subject.yearLevel} • {subject.academicYear} • {subject.semester}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">

@@ -22,6 +22,8 @@ export type Subject = {
     yearLevel: string;
     blocks: string[];
     teacherId: string;
+    academicYear: string;
+    semester: string;
 }
 
 export type CapstoneProject = {
