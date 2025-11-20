@@ -50,16 +50,17 @@ export function ScheduleConsultationForm({ consultation, onFinished }: ScheduleC
   function onSubmit(values: z.infer<typeof formSchema>) {
     const consultationRef = doc(firestore, "consultations", consultation.id);
     
-    updateDocumentNonBlocking(consultationRef, {
+    // Create an update object that only includes the fields to be changed
+    const updateData: Partial<Consultation> = {
         date: values.date.toISOString().split('T')[0],
         startTime: values.startTime,
         endTime: values.endTime,
         venue: values.venue,
         status: "Scheduled",
-        // Carry over existing details
-        capstoneProjectId: consultation.capstoneProjectId,
-        projectDetails: consultation.projectDetails
-    });
+    };
+
+    // Ensure existing fields are not lost by performing an update, not a set
+    updateDocumentNonBlocking(consultationRef, updateData);
 
     form.reset();
     onFinished();

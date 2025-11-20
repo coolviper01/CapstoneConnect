@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDocumentNonBlocking, useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
-import type { CapstoneProject } from "@/lib/types";
+import type { CapstoneProject, Subject } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -53,6 +53,12 @@ export default function SchedulePage() {
     [firestore, user]
   );
   const { data: projects, isLoading: isLoadingProjects } = useCollection<CapstoneProject>(projectsQuery);
+
+  const subjectsQuery = useMemoFirebase(
+    () => collection(firestore, "subjects"),
+    [firestore]
+  );
+  const { data: subjects, isLoading: isLoadingSubjects } = useCollection<Subject>(subjectsQuery);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -67,10 +73,11 @@ export default function SchedulePage() {
 
   const selectedProjectId = form.watch('projectId');
   const selectedProject = projects?.find(p => p.id === selectedProjectId);
+  const selectedSubject = subjects?.find(s => s.id === selectedProject?.subjectId);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!selectedProject) {
-        toast({ variant: "destructive", title: "Error", description: "Selected project not found."});
+    if (!selectedProject || !user) {
+        toast({ variant: "destructive", title: "Error", description: "Selected project not found or user not logged in."});
         return;
     }
 
@@ -80,10 +87,9 @@ export default function SchedulePage() {
       capstoneProjectId: selectedProject.id,
       capstoneTitle: selectedProject.title,
       projectDetails: selectedProject.details,
-      semester: '', // This should be set based on context if available
-      academicYear: '', // This should be set based on context if available
-      blockGroupNumber: '', // This should be set based on context if available
-      // These would be fetched based on studentIds in a real app, for now it is empty
+      semester: selectedSubject?.semester || '', 
+      academicYear: selectedSubject?.academicYear || '',
+      blockGroupNumber: selectedSubject?.blocks.join(', ') || '',
       students: [], 
       studentIds: selectedProject.studentIds,
       advisorId: selectedProject.adviserId,
@@ -125,7 +131,7 @@ export default function SchedulePage() {
                               </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                              {isLoadingProjects ? <SelectItem value="loading" disabled>Loading projects...</SelectItem> : 
+                              {isLoadingProjects || isLoadingSubjects ? <SelectItem value="loading" disabled>Loading projects...</SelectItem> : 
                               projects?.map(project => (
                                   <SelectItem key={project.id} value={project.id}>{project.title}</SelectItem>
                               ))}

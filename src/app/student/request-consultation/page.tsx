@@ -17,9 +17,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
 import { useToast } from '@/hooks/use-toast';
-import { addDocumentNonBlocking, useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
-import type { CapstoneProject } from '@/lib/types';
+import { addDocumentNonBlocking, useFirestore, useUser, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, doc, query } from 'firebase/firestore';
+import type { CapstoneProject, Subject } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -38,6 +38,14 @@ export default function RequestConsultationPage() {
   const projectRef = useMemoFirebase(() => projectId ? doc(firestore, 'capstoneProjects', projectId) : null, [firestore, projectId]);
   const { data: project, isLoading: isLoadingProject } = useDoc<CapstoneProject>(projectRef);
   
+  const subjectsQuery = useMemoFirebase(() => collection(firestore, 'subjects'), [firestore]);
+  const { data: subjects } = useCollection<Subject>(subjectsQuery);
+
+  const subject = useMemoFirebase(() => {
+    if (!project || !subjects) return null;
+    return subjects.find(s => s.id === project.subjectId);
+  }, [project, subjects]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -70,9 +78,9 @@ export default function RequestConsultationPage() {
       advisorId: project.adviserId,
       agenda: values.agenda,
       status: 'Pending Approval',
-      semester: '',
-      academicYear: '',
-      blockGroupNumber: ''
+      semester: subject?.semester || '',
+      academicYear: subject?.academicYear || '',
+      blockGroupNumber: subject?.blocks.join(', ') || ''
     });
 
     toast({
