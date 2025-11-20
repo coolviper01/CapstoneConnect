@@ -6,30 +6,15 @@ import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 import Link from "next/link";
 import { useFirebase } from "@/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { useEffect, useState } from "react";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, firestore } = useFirebase();
-  const [isTeacher, setIsTeacher] = useState(false);
-
-  useEffect(() => {
-    if (user && firestore) {
-      const checkRole = async () => {
-        const teacherDoc = await getDoc(doc(firestore, "teachers", user.uid));
-        if (teacherDoc.exists()) {
-          setIsTeacher(true);
-        }
-      };
-      checkRole();
-    }
-  }, [user, firestore]);
+  const { role } = useFirebase();
   
-  const menuItems = isTeacher ? (
+  const menuItems = role === 'teacher' ? (
     <>
       <SidebarMenuItem>
         <SidebarMenuButton asChild tooltip="Dashboard">
