@@ -192,7 +192,7 @@
       */
       match /students/{studentId} {
         allow get: if isSignedIn();
-        allow list: if false;
+        allow list: if isSignedIn();
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
         allow update: if resource != null && isOwner(studentId) && isProfileIdImmutable();
         allow delete: if resource != null && isOwner(studentId);
