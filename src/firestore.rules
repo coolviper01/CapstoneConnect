@@ -134,17 +134,26 @@
       * Student can update their own profile info if they are active.
       */
       function canUpdateStudent(studentId) {
-        // A teacher can approve a pending student.
-        let isTeacherApprovingStudent = isTeacher() && 
+        // A teacher can approve a pending student, changing status to Active.
+        let isTeacherApprovingStudent = isTeacher() &&
                                         request.resource.data.status == 'Active' &&
-                                        resource.data.status == 'Pending Approval';
+                                        resource.data.status == 'Pending Approval' &&
+                                        // The teacher should only be changing the status field.
+                                        request.resource.data.keys().hasOnly(['status']);
 
         // An active student can update their own non-status-related data.
         let isActiveStudentUpdatingOwnData = isOwner(studentId) && 
                                              resource.data.status == 'Active' &&
                                              request.resource.data.status == resource.data.status;
         
-        return isTeacherApprovingStudent || isActiveStudentUpdatingOwnData;
+        // A student can update their own profile with subject/group details after initial creation
+        let isStudentCompletingRegistration = isOwner(studentId) &&
+                                              resource.data.status == 'Pending Approval' &&
+                                              request.resource.data.status == 'Pending Approval' &&
+                                              !resource.data.keys().hasAny(['subjectId', 'block', 'groupNumber']);
+
+
+        return isTeacherApprovingStudent || isActiveStudentUpdatingOwnData || isStudentCompletingRegistration;
       }
 
 
@@ -221,7 +230,7 @@
       */
       match /students/{studentId} {
         allow get: if isSignedIn();
-        // Allow teachers to list students of their subjects
+        // Allow teachers to list students for approval.
         allow list: if isTeacher();
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
         allow update: if resource != null && isProfileIdImmutable() && canUpdateStudent(studentId);
