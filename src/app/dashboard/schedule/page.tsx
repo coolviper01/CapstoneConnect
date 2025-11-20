@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDocumentNonBlocking, useFirestore } from "@/firebase";
 import { collection } from "firebase/firestore";
-import { students as allStudents } from "@/lib/data";
+import { students as allStudents, advisors } from "@/lib/data";
 
 const formSchema = z.object({
   semester: z.string().min(1, "Semester is required"),
@@ -65,14 +65,17 @@ export default function SchedulePage() {
     // For now, we'll assign the first two students from the static list.
     const assignedStudents = allStudents.slice(0, 2);
     
+    // In a real app, this would be the logged-in advisor's ID
+    const assignedAdvisor = advisors[0];
+    
     addDocumentNonBlocking(consultationsCol, {
       ...values,
       date: values.date.toISOString().split('T')[0], // format date as YYYY-MM-DD
       status: "Scheduled",
       students: assignedStudents,
       studentIds: assignedStudents.map(s => s.id),
-      // In a real app, this would be the logged-in advisor's ID
-      advisorId: "advisor-1",
+      advisorId: assignedAdvisor.id,
+      advisor: assignedAdvisor,
     });
 
     toast({

@@ -15,7 +15,7 @@ export default function Home() {
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Button variant="ghost" asChild>
             <Link
-              href="/dashboard"
+              href="/teacher"
             >
               Teacher
             </Link>

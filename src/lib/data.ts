@@ -1,5 +1,5 @@
-import type { Student } from './types';
-import { addDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
+import type { Student, Advisor } from './types';
+import { addDoc, collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { type Firestore } from 'firebase/firestore';
 
 export const students: Student[] = [
@@ -9,6 +9,11 @@ export const students: Student[] = [
   { id: 'student-4', name: 'Diana Miller', avatarUrl: 'https://picsum.photos/seed/student4/100/100' },
   { id: 'student-5', name: 'Ethan Davis', avatarUrl: 'https://picsum.photos/seed/student5/100/100' },
 ];
+
+export const advisors: Advisor[] = [
+    { id: 'advisor-1', name: 'Dr. Evelyn Reed', email: 'e.reed@university.edu' },
+    { id: 'advisor-2', name: 'Dr. Samuel Grant', email: 's.grant@university.edu' },
+]
 
 export const consultations = [
   {
@@ -26,6 +31,7 @@ export const consultations = [
     students: [students[0], students[1]],
     studentIds: [students[0].id, students[1].id],
     advisorId: 'advisor-1',
+    advisor: advisors[0],
   },
   {
     id: '2',
@@ -42,6 +48,7 @@ export const consultations = [
     students: [students[2], students[3]],
     studentIds: [students[2].id, students[3].id],
     advisorId: 'advisor-1',
+    advisor: advisors[0],
     notes: 'Discussed the need for robust data encryption for user privacy. The team needs to finalize the UI/UX mockups for the next meeting. Progress is on track.',
     attendees: [
       { studentId: '3', signature: 'Charlie Brown' },
@@ -63,6 +70,7 @@ export const consultations = [
     students: [students[4]],
     studentIds: [students[4].id],
     advisorId: 'advisor-2',
+    advisor: advisors[1],
      notes: 'Project is complete and meets all requirements. Approved for final presentation.',
     attendees: [
       { studentId: '5', signature: 'Ethan Davis' },

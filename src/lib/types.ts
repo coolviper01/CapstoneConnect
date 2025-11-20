@@ -4,6 +4,12 @@ export type Student = {
   avatarUrl: string;
 };
 
+export type Advisor = {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export type Attendee = {
   studentId: string; 
   signature: string;
@@ -22,6 +28,7 @@ export type Consultation = {
   projectDetails: string;
   status: 'Scheduled' | 'Completed' | 'Approved' | 'Cancelled';
   students: Student[];
+  advisor: Advisor;
   notes?: string;
   attendees?: Attendee[];
   // Firestore data types
