@@ -96,9 +96,7 @@ export default function TeacherDashboard() {
     const handleApproveProject = (project: CapstoneProject) => {
         const projectRef = doc(firestore, 'capstoneProjects', project.id);
         const data = { status: 'Pending Adviser Approval' };
-        updateDoc(projectRef, data).catch(e => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: projectRef.path, operation: 'update', requestResourceData: data }));
-        });
+        updateDoc(projectRef, data);
         toast({ title: "Project Approved!", description: `"${project.title}" has been forwarded to the adviser.` });
         setProjectToApprove(null);
     };
@@ -107,9 +105,7 @@ export default function TeacherDashboard() {
         if (!projectToReject) return;
         const projectRef = doc(firestore, 'capstoneProjects', projectToReject.id);
         const data = { status: 'Rejected', rejectionReason: rejectionReason };
-        updateDoc(projectRef, data).catch(e => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: projectRef.path, operation: 'update', requestResourceData: data }));
-        });
+        updateDoc(projectRef, data);
         toast({ variant: "destructive", title: "Project Rejected", description: `"${projectToReject.title}" has been rejected.` });
         setProjectToReject(null);
         setRejectionReason("");
@@ -117,65 +113,46 @@ export default function TeacherDashboard() {
 
     const handleApproveStudent = async (student: Student) => {
         if (!firestore) return;
-        const { id: toastId } = toast({ title: "Approving student..." });
-    
         const studentRef = doc(firestore, 'students', student.id);
         const studentUpdateData = { status: 'Active' };
 
-        try {
-            const batch = writeBatch(firestore);
-            batch.update(studentRef, studentUpdateData);
-            
-            let wasAddedToProject = false;
-            let projectTitle = '';
+        const batch = writeBatch(firestore);
+        batch.update(studentRef, studentUpdateData);
 
-            if (student.subjectId && student.block && student.groupNumber) {
-                const projectsQuery = query(
-                    collection(firestore, 'capstoneProjects'),
-                    where('subjectId', '==', student.subjectId),
-                    where('block', '==', student.block),
-                    where('groupNumber', '==', student.groupNumber)
-                );
-                const projectSnapshot = await getDocs(projectsQuery);
+        let wasAddedToProject = false;
+        let projectTitle = '';
 
-                if (!projectSnapshot.empty) {
-                    const projectDoc = projectSnapshot.docs[0];
-                    const projectData = projectDoc.data();
-                    projectTitle = projectData.title;
-                    
-                    if (!projectData.studentIds.includes(student.id)) {
-                        const newStudentIds = [...projectData.studentIds, student.id];
-                        batch.update(projectDoc.ref, { studentIds: newStudentIds });
-                        wasAddedToProject = true;
-                    }
+        if (student.subjectId && student.block && student.groupNumber) {
+            const projectsQuery = query(
+                collection(firestore, 'capstoneProjects'),
+                where('subjectId', '==', student.subjectId),
+                where('block', '==', student.block),
+                where('groupNumber', '==', student.groupNumber)
+            );
+            const projectSnapshot = await getDocs(projectsQuery);
+
+            if (!projectSnapshot.empty) {
+                const projectDoc = projectSnapshot.docs[0];
+                const projectData = projectDoc.data();
+                projectTitle = projectData.title;
+                
+                if (!projectData.studentIds.includes(student.id)) {
+                    const newStudentIds = [...projectData.studentIds, student.id];
+                    batch.update(projectDoc.ref, { studentIds: newStudentIds });
+                    wasAddedToProject = true;
                 }
             }
-
-            await batch.commit();
-
-            if (wasAddedToProject) {
-                toast({ id: toastId, title: "Student Approved & Added to Project!", description: `${student.name} has been added to "${projectTitle}".` });
-            } else {
-                toast({ id: toastId, title: "Student Approved!", description: `${student.name} is now an active student.` });
-            }
-
-        } catch (error) {
-             const permissionError = new FirestorePermissionError({
-                path: studentRef.path, // Path for the primary operation that might fail
-                operation: 'update',
-                requestResourceData: studentUpdateData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-
-             toast({
-                id: toastId,
-                variant: "destructive",
-                title: "Approval Failed",
-                description: "Could not approve the student. You may not have the required permissions.",
-            });
-        } finally {
-            setStudentToApprove(null);
         }
+
+        await batch.commit();
+
+        if (wasAddedToProject) {
+            toast({ title: "Student Approved & Added to Project!", description: `${student.name} has been added to "${projectTitle}".` });
+        } else {
+            toast({ title: "Student Approved!", description: `${student.name} is now an active student.` });
+        }
+
+        setStudentToApprove(null);
     };
 
 
