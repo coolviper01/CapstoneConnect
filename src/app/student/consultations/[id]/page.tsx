@@ -1,4 +1,3 @@
-
 'use client';
 import { useParams } from "next/navigation";
 import Link from 'next/link';
@@ -360,7 +359,7 @@ export default function StudentConsultationDetailPage() {
                        value={point.studentResponse || ""}
                        onChange={(e) => updateDiscussionPoint(point.id, e.target.value)}
                        placeholder="Describe the activity you made or provide an update..."
-                       readOnly={point.studentUpdateStatus === 'Approved' || point.studentUpdateStatus === 'Pending'}
+                       readOnly={point.studentUpdateStatus === 'Approved'}
                      />
                    </div>
                    
