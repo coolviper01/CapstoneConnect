@@ -49,7 +49,7 @@ export type Consultation = {
   endTime: string;
   venue: string;
   projectDetails: string;
-  status: 'Scheduled' | 'Completed' | 'Approved' | 'Cancelled';
+  status: 'Pending Approval' | 'Scheduled' | 'Completed' | 'Cancelled';
   students: Student[];
   advisor: Advisor;
   notes?: string;
@@ -59,4 +59,5 @@ export type Consultation = {
   studentIds?: string[];
   notesId?: string;
   capstoneProjectId?: string;
+  agenda?: string; // New field for student to fill
 };

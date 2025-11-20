@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Clock, Check, X, HelpCircle } from 'lucide-react';
+import { PlusCircle, Clock, Check, X, HelpCircle, CalendarPlus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 
 export default function StudentProjectsPage() {
@@ -120,6 +121,16 @@ export default function StudentProjectsPage() {
                     </Alert>
                   )}
                 </CardContent>
+                {project.status === 'Approved' && (
+                  <CardFooter>
+                    <Button asChild>
+                      <Link href={`/student/request-consultation?projectId=${project.id}`}>
+                        <CalendarPlus className="mr-2 h-4 w-4" />
+                        Request Consultation
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                )}
               </Card>
             )
         })}
@@ -155,12 +166,12 @@ export default function StudentProjectsPage() {
     return (
        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {subjects.map(subject => (
-           <Card key={subject.id}>
+           <Card key={subject.id} className="flex flex-col">
             <CardHeader>
                 <CardTitle>{subject.name}</CardTitle>
                 <CardDescription>{subject.yearLevel}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               <div className="flex flex-wrap gap-2">
                 {subject.blocks.map(block => (
                   <Badge key={block} variant="secondary">{block}</Badge>
