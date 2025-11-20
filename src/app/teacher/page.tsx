@@ -1,6 +1,7 @@
 
 'use client';
 import Link from "next/link";
+import { useMemo } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,16 +23,44 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import type { Consultation } from "@/lib/types";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import type { Consultation, CapstoneProject, Advisor } from "@/lib/types";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PendingApprovals } from "./pending-approvals";
 
 export default function TeacherDashboardPage() {
   const firestore = useFirestore();
-  const consultationsQuery = useMemoFirebase(() => collection(firestore, 'consultations'), [firestore]);
-  const { data: consultations, isLoading } = useCollection<Consultation>(consultationsQuery);
+  const { user, isUserLoading } = useUser();
+
+  // 1. Fetch projects for the current teacher
+  const teacherProjectsQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'capstoneProjects'), where('teacherId', '==', user.uid)) : null,
+    [firestore, user]
+  );
+  const { data: teacherProjects, isLoading: isLoadingProjects } = useCollection<CapstoneProject>(teacherProjectsQuery);
+
+  const teacherProjectIds = useMemo(() => teacherProjects?.map(p => p.id) || [], [teacherProjects]);
+
+  // 2. Fetch consultations for those projects
+  const consultationsQuery = useMemoFirebase(
+    () => teacherProjectIds.length > 0 ? query(collection(firestore, 'consultations'), where('capstoneProjectId', 'in', teacherProjectIds)) : null,
+    [firestore, teacherProjectIds]
+  );
+  const { data: consultations, isLoading: isLoadingConsultations } = useCollection<Consultation>(consultationsQuery);
+
+  // 3. Fetch all advisors to map names
+  const advisorsQuery = useMemoFirebase(() => collection(firestore, 'advisors'), [firestore]);
+  const { data: advisors, isLoading: isLoadingAdvisors } = useCollection<Advisor>(advisorsQuery);
+  
+  const advisorsMap = useMemo(() => {
+    if (!advisors) return new Map<string, string>();
+    return new Map(advisors.map(a => [a.id, a.name]));
+  }, [advisors]);
+
+
+  const isLoading = isUserLoading || isLoadingProjects || isLoadingConsultations || isLoadingAdvisors;
+
 
   const getBadgeVariant = (status: Consultation['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
@@ -66,7 +95,7 @@ export default function TeacherDashboardPage() {
         return (
             <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
-                    No consultations found.
+                    No consultations found for your subjects.
                 </TableCell>
             </TableRow>
         );
@@ -75,7 +104,7 @@ export default function TeacherDashboardPage() {
     return consultations.map((consultation) => (
       <TableRow key={consultation.id}>
         <TableCell className="font-medium">{consultation.capstoneTitle}</TableCell>
-        <TableCell className="hidden sm:table-cell">{consultation.advisor?.name || 'N/A'}</TableCell>
+        <TableCell className="hidden sm:table-cell">{consultation.advisorId ? advisorsMap.get(consultation.advisorId) || 'N/A' : 'N/A'}</TableCell>
         <TableCell className="hidden md:table-cell">{new Date(consultation.date).toLocaleDateString()}</TableCell>
         <TableCell className="hidden lg:table-cell">{consultation.startTime} - {consultation.endTime}</TableCell>
         <TableCell>
@@ -104,7 +133,7 @@ export default function TeacherDashboardPage() {
         <Card>
             <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <CardTitle>All Consultations</CardTitle>
+                <CardTitle>My Consultations</CardTitle>
                 <div className="flex items-center gap-2">
                 <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
