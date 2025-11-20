@@ -68,7 +68,7 @@ export default function RegisterPage() {
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!role || !firestore) return;
+    if (!role || !firestore || !auth) return;
     setIsLoading(true);
 
     try {
@@ -81,7 +81,7 @@ export default function RegisterPage() {
 
       await updateProfile(user, { displayName: values.name });
 
-      let collectionName = '';
+      let collectionName: 'advisors' | 'teachers' | '' = '';
       let redirectPath = '/';
 
       if (role === 'Adviser') {
