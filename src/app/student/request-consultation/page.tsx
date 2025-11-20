@@ -44,16 +44,16 @@ export default function RequestConsultationPage() {
   const subjectsQuery = useMemoFirebase(() => collection(firestore, 'subjects'), [firestore]);
   const { data: subjects } = useCollection<Subject>(subjectsQuery);
 
-  // Query for open consultations for this project
-  const openConsultationsQuery = useMemoFirebase(() => {
+  // Query for open or pending consultations for this project
+  const existingConsultationsQuery = useMemoFirebase(() => {
     if (!projectId) return null;
     return query(
         collection(firestore, 'consultations'),
         where('capstoneProjectId', '==', projectId),
-        where('status', '==', 'Scheduled')
+        where('status', 'in', ['Scheduled', 'Pending Approval'])
     );
   }, [firestore, projectId]);
-  const { data: openConsultations, isLoading: isLoadingOpenConsultations } = useCollection<Consultation>(openConsultationsQuery);
+  const { data: existingConsultations, isLoading: isLoadingExisting } = useCollection<Consultation>(existingConsultationsQuery);
 
   const subject = React.useMemo(() => {
     if (!project || !subjects) return null;
@@ -82,8 +82,8 @@ export default function RequestConsultationPage() {
        return;
     }
 
-    if (openConsultations && openConsultations.length > 0) {
-      toast({ variant: 'destructive', title: 'Open Consultation Exists', description: 'You must wait for the current open consultation to be closed before requesting a new one.' });
+    if (existingConsultations && existingConsultations.length > 0) {
+      toast({ variant: 'destructive', title: 'Open Consultation Exists', description: 'You already have an open or pending consultation for this project.' });
       return;
     }
 
@@ -136,7 +136,9 @@ export default function RequestConsultationPage() {
     )
   }
 
-  const hasOpenConsultation = openConsultations && openConsultations.length > 0;
+  const hasExistingConsultation = existingConsultations && existingConsultations.length > 0;
+  const existingConsultationStatus = hasExistingConsultation ? existingConsultations[0].status : null;
+
 
   return (
     <div className="flex flex-col gap-6 max-w-4xl mx-auto">
@@ -147,12 +149,18 @@ export default function RequestConsultationPage() {
 
       {renderProjectInfo()}
 
-      {hasOpenConsultation && (
+      {isLoadingExisting ? <Skeleton className="h-24 w-full" /> : hasExistingConsultation && (
         <Alert>
             <Hourglass className="h-4 w-4" />
-            <AlertTitle>Open Consultation in Progress</AlertTitle>
+            <AlertTitle>
+              {existingConsultationStatus === 'Scheduled' 
+                ? 'Open Consultation in Progress' 
+                : 'Request Awaiting Approval'}
+            </AlertTitle>
             <AlertDescription>
-                This project already has an open consultation. You must wait for the adviser to close it before you can request a new one.
+              {existingConsultationStatus === 'Scheduled'
+                ? 'This project already has an open consultation. You must wait for the adviser to close it before you can request a new one.'
+                : 'You have a pending consultation request for this project. Please wait for your adviser to schedule it.'}
             </AlertDescription>
         </Alert>
       )}
@@ -176,14 +184,14 @@ export default function RequestConsultationPage() {
                         placeholder="Briefly list the topics you want to discuss (e.g., progress update, specific challenges, next steps)."
                         className="min-h-[150px]"
                         {...field}
-                        disabled={hasOpenConsultation}
+                        disabled={hasExistingConsultation}
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={isLoadingProject || isLoadingOpenConsultations || hasOpenConsultation}>
+              <Button type="submit" disabled={isLoadingProject || isLoadingExisting || hasExistingConsultation}>
                 Send Request
               </Button>
             </form>
@@ -193,5 +201,3 @@ export default function RequestConsultationPage() {
     </div>
   );
 }
-
-    
