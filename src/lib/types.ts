@@ -13,6 +13,7 @@ export type Advisor = {
 
 export type Attendee = {
   studentId: string; 
+  name: string;
   signature: string;
 }
 
@@ -57,8 +58,6 @@ export type Consultation = {
   venue?: string; // Optional for pending requests
   projectDetails: string;
   status: 'Pending Approval' | 'Scheduled' | 'Completed' | 'Cancelled';
-  students?: Student[]; // Make optional to handle cases where it might not be populated
-  advisor?: Advisor; // Make optional
   attendees?: Attendee[];
   discussionPoints?: DiscussionPoint[];
   // Firestore data types

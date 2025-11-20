@@ -26,6 +26,13 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     const { toast } = useToast();
     const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", consultation.id), [firestore, consultation.id]);
 
+    const studentIds = useMemo(() => consultation.studentIds || [], [consultation.studentIds]);
+    const studentsQuery = useMemoFirebase(() => {
+        if (studentIds.length === 0) return null;
+        return query(collection(firestore, 'students'), where('id', 'in', studentIds));
+    }, [firestore, studentIds]);
+    const { data: students, isLoading: isLoadingStudents } = useCollection<Student>(studentsQuery);
+
     const [attendees, setAttendees] = useState<Attendee[]>([]);
     const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
     const [talkingPoints, setTalkingPoints] = useState<string[]>([]);
@@ -51,9 +58,9 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
             capstoneTitle: consultation.capstoneTitle,
             blockGroupNumber: consultation.blockGroupNumber,
             date: consultation.date ? new Date(consultation.date).toISOString() : new Date().toISOString(),
-            startTime: consultation.startTime || undefined,
-            endTime: consultation.endTime || undefined,
-            venue: consultation.venue || undefined,
+            startTime: consultation.startTime,
+            endTime: consultation.endTime,
+            venue: consultation.venue,
             projectDetails: consultation.projectDetails
           });
     
@@ -75,7 +82,11 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
         if (attendeeIndex > -1) {
             newAttendees[attendeeIndex].signature = signature;
         } else {
-            newAttendees.push({ studentId, signature });
+            // Find student name to add to the attendee list
+            const student = students?.find(s => s.id === studentId);
+            if (student) {
+               newAttendees.push({ studentId, name: student.name, signature });
+            }
         }
         setAttendees(newAttendees);
     };
@@ -114,8 +125,6 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
         toast({ title: "Copied to clipboard!" });
     };
 
-    const studentList: Student[] = Array.isArray(consultation.students) ? consultation.students : [];
-
     return (
         <div className="grid md:grid-cols-3 gap-6 pt-6">
             <div className="md:col-span-1 flex flex-col gap-6">
@@ -127,7 +136,8 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                         <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{consultation.date ? new Date(consultation.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : "Not Scheduled"}</span></div>
                         <div className="flex items-center gap-3"><Clock className="h-4 w-4 text-muted-foreground" /><span>{consultation.startTime && consultation.endTime ? `${consultation.startTime} - ${consultation.endTime}` : 'Not Scheduled'}</span></div>
                         <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{consultation.venue || 'Not Scheduled'}</span></div>
-                        {studentList.length > 0 && (<div className="flex items-start gap-3"><Users className="h-4 w-4 text-muted-foreground mt-1" /><div><p className="font-medium">Students</p><ul className="text-muted-foreground">{studentList.map(s => <li key={s.id}>{s.name}</li>)}</ul></div></div>)}
+                        {isLoadingStudents && <Skeleton className="h-10 w-full" />}
+                        {students && students.length > 0 && (<div className="flex items-start gap-3"><Users className="h-4 w-4 text-muted-foreground mt-1" /><div><p className="font-medium">Students</p><ul className="text-muted-foreground">{students.map(s => <li key={s.id}>{s.name}</li>)}</ul></div></div>)}
                     </CardContent>
                 </Card>
                  <Card>
@@ -162,7 +172,8 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                 <Card>
                     <CardHeader><CardTitle>Attendance</CardTitle><CardDescription>Record attendance by having students type their name to sign.</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
-                        {studentList.map(student => (
+                         {isLoadingStudents && <Skeleton className="h-10 w-full" />}
+                         {students?.map(student => (
                             <div key={student.id} className="flex items-center gap-4">
                                 <Avatar><AvatarImage src={student.avatarUrl} alt={student.name} /><AvatarFallback>{getInitials(student.name)}</AvatarFallback></Avatar>
                                 <span className="flex-1 font-medium">{student.name}</span>
@@ -175,6 +186,32 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
             </div>
         </div>
     );
+}
+
+function ConsultationCard({ consultation, open, onToggle }: { consultation: Consultation, open: boolean, onToggle: () => void }) {
+  return (
+    <Collapsible open={open} onOpenChange={onToggle}>
+      <Card>
+        <CardHeader>
+          <CardTitle>{consultation.capstoneTitle}</CardTitle>
+          <CardDescription>{consultation.blockGroupNumber}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex-1 space-y-3 text-sm">
+          <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{consultation.date ? new Date(consultation.date).toLocaleDateString() : 'Not Scheduled'}</span></div>
+          <div className="flex items-center gap-3"><Clock className="h-4 w-4 text-muted-foreground" /><span>{consultation.startTime && consultation.endTime ? `${consultation.startTime} - ${consultation.endTime}`: 'Not Scheduled'}</span></div>
+          <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{consultation.venue || 'Not Scheduled'}</span></div>
+        </CardContent>
+        <CardFooter>
+          <CollapsibleTrigger asChild>
+            <Button className="w-full" variant="secondary"><FileText className="mr-2 h-4 w-4" />{open ? 'Hide Details' : 'View Details'}</Button>
+          </CollapsibleTrigger>
+        </CardFooter>
+        <CollapsibleContent>
+          {open && <ConsultationDetail consultation={consultation} />}
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  )
 }
 
 export default function AdviserDashboard() {
@@ -201,30 +238,11 @@ export default function AdviserDashboard() {
   );
   const { data: pendingProjects, isLoading: isLoadingProjects } = useCollection<CapstoneProject>(pendingProjectsQuery);
 
-  const studentIds = useMemo(() => {
-    const ids = new Set<string>();
-    allConsultations?.forEach(c => c.studentIds?.forEach(id => ids.add(id)));
-    return Array.from(ids);
-  }, [allConsultations]);
-
-  const studentsQuery = useMemoFirebase(() => {
-    if (studentIds.length === 0) return null;
-    return query(collection(firestore, 'students'), where('id', 'in', studentIds));
-  }, [firestore, studentIds]);
-  const { data: students } = useCollection<Student>(studentsQuery);
   
   // --- MEMOIZED DATA ---
-  const consultationsWithStudents = useMemo(() => {
-    if (!allConsultations || !students) return allConsultations;
-    return allConsultations.map(c => ({
-      ...c,
-      students: c.studentIds?.map(id => students.find(s => s.id === id)).filter(Boolean) as Student[] || []
-    }));
-  }, [allConsultations, students]);
-
-  const scheduledConsultations = useMemo(() => consultationsWithStudents?.filter(c => c.status === 'Scheduled'), [consultationsWithStudents]);
-  const pastConsultations = useMemo(() => consultationsWithStudents?.filter(c => c.status === 'Completed' || c.status === 'Cancelled' || (c.date && new Date(c.date) < new Date())), [consultationsWithStudents]);
-  const pendingConsultationRequests = useMemo(() => consultationsWithStudents?.filter(c => c.status === 'Pending Approval'), [consultationsWithStudents]);
+  const scheduledConsultations = useMemo(() => allConsultations?.filter(c => c.status === 'Scheduled'), [allConsultations]);
+  const pastConsultations = useMemo(() => allConsultations?.filter(c => c.status === 'Completed' || c.status === 'Cancelled' || (c.date && new Date(c.date) < new Date())), [allConsultations]);
+  const pendingConsultationRequests = useMemo(() => allConsultations?.filter(c => c.status === 'Pending Approval'), [allConsultations]);
 
   // --- HANDLERS ---
   const handleApproveProject = (project: CapstoneProject) => {
@@ -268,27 +286,12 @@ export default function AdviserDashboard() {
     return (
         <div className="grid gap-6">
             {consultationsToRender.map(c => (
-            <Collapsible key={c.id} open={openConsultations[c.id]} onOpenChange={() => toggleConsultation(c.id)}>
-              <Card>
-                  <CardHeader>
-                      <CardTitle>{c.capstoneTitle}</CardTitle>
-                      <CardDescription>{c.blockGroupNumber}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 space-y-3 text-sm">
-                  <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{c.date ? new Date(c.date).toLocaleDateString() : 'Not Scheduled'}</span></div>
-                  <div className="flex items-center gap-3"><Clock className="h-4 w-4 text-muted-foreground" /><span>{c.startTime && c.endTime ? `${c.startTime} - ${c.endTime}`: 'Not Scheduled'}</span></div>
-                  <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{c.venue || 'Not Scheduled'}</span></div>
-                  </CardContent>
-                  <CardFooter>
-                    <CollapsibleTrigger asChild>
-                      <Button className="w-full" variant="secondary"><FileText className="mr-2 h-4 w-4" />{openConsultations[c.id] ? 'Hide Details' : 'View Details'}</Button>
-                    </CollapsibleTrigger>
-                  </CardFooter>
-                  <CollapsibleContent>
-                    <ConsultationDetail consultation={c} />
-                  </CollapsibleContent>
-              </Card>
-            </Collapsible>
+              <ConsultationCard 
+                key={c.id} 
+                consultation={c} 
+                open={!!openConsultations[c.id]}
+                onToggle={() => toggleConsultation(c.id)}
+              />
             ))}
       </div>
     )
