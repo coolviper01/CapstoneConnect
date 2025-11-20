@@ -31,7 +31,7 @@ export default function StudentDashboardPage() {
         <Card key={i}>
           <CardHeader>
             <CardTitle><Skeleton className="h-6 w-3/4" /></CardTitle>
-            <CardDescription><Skeleton className="h-4 w-1/2" /></CardDescription>
+            <div className="text-sm text-muted-foreground pt-1"><Skeleton className="h-4 w-1/2" /></div>
           </CardHeader>
           <CardContent className="flex-1 space-y-3 text-sm">
             <Skeleton className="h-5 w-full" />
