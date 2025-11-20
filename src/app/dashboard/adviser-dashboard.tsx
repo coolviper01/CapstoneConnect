@@ -136,8 +136,26 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                         <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><span>{consultation.date ? new Date(consultation.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : "Not Scheduled"}</span></div>
                         <div className="flex items-center gap-3"><Clock className="h-4 w-4 text-muted-foreground" /><span>{consultation.startTime && consultation.endTime ? `${consultation.startTime} - ${consultation.endTime}` : 'Not Scheduled'}</span></div>
                         <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{consultation.venue || 'Not Scheduled'}</span></div>
+                        
                         {isLoadingStudents && <Skeleton className="h-10 w-full" />}
-                        {students && students.length > 0 && (<div className="flex items-start gap-3"><Users className="h-4 w-4 text-muted-foreground mt-1" /><div><p className="font-medium">Students</p><ul className="text-muted-foreground">{students.map(s => <li key={s.id}>{s.name}</li>)}</ul></div></div>)}
+                        {!isLoadingStudents && students && students.length > 0 && (
+                            <div className="flex items-start gap-3">
+                                <Users className="h-4 w-4 text-muted-foreground mt-1" />
+                                <div>
+                                    <p className="font-medium">Students</p>
+                                    <ul className="text-muted-foreground">{students.map(s => <li key={s.id}>{s.name}</li>)}</ul>
+                                </div>
+                            </div>
+                        )}
+                        {!isLoadingStudents && (!students || students.length === 0) && (
+                           <div className="flex items-start gap-3">
+                                <Users className="h-4 w-4 text-muted-foreground mt-1" />
+                                <div>
+                                    <p className="font-medium">Students</p>
+                                    <p className="text-muted-foreground">No students assigned.</p>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
                  <Card>
@@ -173,13 +191,17 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                     <CardHeader><CardTitle>Attendance</CardTitle><CardDescription>Record attendance by having students type their name to sign.</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                          {isLoadingStudents && <Skeleton className="h-10 w-full" />}
-                         {students?.map(student => (
-                            <div key={student.id} className="flex items-center gap-4">
-                                <Avatar><AvatarImage src={student.avatarUrl} alt={student.name} /><AvatarFallback>{getInitials(student.name)}</AvatarFallback></Avatar>
-                                <span className="flex-1 font-medium">{student.name}</span>
-                                <Input className="w-64" placeholder="Type name to sign" value={attendees.find(a => a.studentId === student.id)?.signature || ''} onChange={(e) => handleSignatureChange(student.id, e.target.value)} />
-                            </div>
-                        ))}
+                         {!isLoadingStudents && students && students.length > 0 ? (
+                            students.map(student => (
+                                <div key={student.id} className="flex items-center gap-4">
+                                    <Avatar><AvatarImage src={student.avatarUrl} alt={student.name} /><AvatarFallback>{getInitials(student.name)}</AvatarFallback></Avatar>
+                                    <span className="flex-1 font-medium">{student.name}</span>
+                                    <Input className="w-64" placeholder="Type name to sign" value={attendees.find(a => a.studentId === student.id)?.signature || ''} onChange={(e) => handleSignatureChange(student.id, e.target.value)} />
+                                </div>
+                            ))
+                         ) : (
+                            !isLoadingStudents && <p className="text-sm text-muted-foreground text-center py-4">No students to record attendance for.</p>
+                         )}
                     </CardContent>
                     <CardFooter><Button onClick={saveAttendance}>Save Attendance</Button></CardFooter>
                 </Card>
@@ -415,5 +437,3 @@ export default function AdviserDashboard() {
     </div>
   );
 }
-
-    
