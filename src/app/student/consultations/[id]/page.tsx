@@ -16,9 +16,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export default function StudentConsultationDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const firestore = useFirestore();
   const { toast } = useToast();
-  const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", params.id), [firestore, params.id]);
+  const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", id), [firestore, id]);
   const { data: consultation, isLoading } = useDoc<Consultation>(consultationRef);
 
   const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
