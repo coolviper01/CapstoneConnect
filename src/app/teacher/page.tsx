@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/page-header";
-import { Check, Search, X, Eye } from "lucide-react";
+import { Eye, Search } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,36 +24,14 @@ import {
 import { Input } from "@/components/ui/input";
 import type { Consultation } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, updateDoc } from "firebase/firestore";
+import { collection } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
 import { PendingApprovals } from "./pending-approvals";
 
 export default function TeacherDashboardPage() {
   const firestore = useFirestore();
   const consultationsQuery = useMemoFirebase(() => collection(firestore, 'consultations'), [firestore]);
   const { data: consultations, isLoading } = useCollection<Consultation>(consultationsQuery);
-  const { toast } = useToast();
-
-  const handleStatusChange = async (id: string, status: 'Approved' | 'Cancelled') => {
-    if (!firestore) return;
-    const docRef = doc(firestore, 'consultations', id);
-    try {
-      await updateDoc(docRef, { status });
-      toast({
-        title: "Status Updated",
-        description: `Consultation has been ${status.toLowerCase()}.`,
-      });
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: "Could not update the consultation status.",
-      });
-    }
-  };
-
 
   const getBadgeVariant = (status: Consultation['status']): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
@@ -78,7 +57,7 @@ export default function TeacherDashboardPage() {
           <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
           <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-32" /></TableCell>
           <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-          <TableCell className="text-right"><Skeleton className="h-9 w-40 ml-auto" /></TableCell>
+          <TableCell className="text-right"><Skeleton className="h-9 w-20 ml-auto" /></TableCell>
         </TableRow>
       ));
     }
@@ -96,7 +75,7 @@ export default function TeacherDashboardPage() {
     return consultations.map((consultation) => (
       <TableRow key={consultation.id}>
         <TableCell className="font-medium">{consultation.capstoneTitle}</TableCell>
-        <TableCell className="hidden sm:table-cell">{consultation.advisor.name}</TableCell>
+        <TableCell className="hidden sm:table-cell">{consultation.advisor?.name || 'N/A'}</TableCell>
         <TableCell className="hidden md:table-cell">{new Date(consultation.date).toLocaleDateString()}</TableCell>
         <TableCell className="hidden lg:table-cell">{consultation.startTime} - {consultation.endTime}</TableCell>
         <TableCell>
@@ -105,22 +84,12 @@ export default function TeacherDashboardPage() {
           </Badge>
         </TableCell>
         <TableCell className="text-right">
-          <div className="flex gap-2 justify-end">
-            <Button asChild variant="outline" size="sm">
-                <Link href={`/dashboard/consultations/${consultation.id}`}>
-                <Eye className="mr-2 h-4 w-4" />
-                View
-                </Link>
-            </Button>
-            <Button variant="default" size="sm" onClick={() => handleStatusChange(consultation.id, 'Approved')} disabled={consultation.status === 'Approved'}>
-              <Check className="mr-2 h-4 w-4" />
-              Approve
-            </Button>
-            <Button variant="destructive" size="sm" onClick={() => handleStatusChange(consultation.id, 'Cancelled')} disabled={consultation.status === 'Cancelled'}>
-              <X className="mr-2 h-4 w-4" />
-              Cancel
-            </Button>
-          </div>
+          <Button asChild variant="outline" size="sm">
+              <Link href={`/dashboard/consultations/${consultation.id}`}>
+              <Eye className="mr-2 h-4 w-4" />
+              View
+              </Link>
+          </Button>
         </TableCell>
       </TableRow>
     ));
@@ -177,3 +146,5 @@ export default function TeacherDashboardPage() {
       </div>
   );
 }
+
+    

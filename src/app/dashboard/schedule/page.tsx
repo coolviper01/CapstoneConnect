@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +15,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,58 +24,69 @@ import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addDocumentNonBlocking, useFirestore } from "@/firebase";
-import { collection } from "firebase/firestore";
-import { students as allStudents, advisors } from "@/lib/data";
+import { addDocumentNonBlocking, useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
+import type { CapstoneProject, Student } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect } from "react";
 
 const formSchema = z.object({
-  semester: z.string().min(1, "Semester is required"),
-  academicYear: z.string().min(1, "Academic Year is required"),
-  capstoneTitle: z.string().min(1, "Capstone Title is required"),
-  blockGroupNumber: z.string().min(1, "Block/Group Number is required"),
+  projectId: z.string().min(1, "You must select a project."),
   date: z.date({ required_error: "A date is required." }),
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
   venue: z.string().min(1, "Venue is required"),
-  projectDetails: z.string().min(10, "Please provide more details about the project."),
 });
 
 export default function SchedulePage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
+
+  const projectsQuery = useMemoFirebase(
+    () => user ? query(
+      collection(firestore, "capstoneProjects"), 
+      where("adviserId", "==", user.uid),
+      where("status", "==", "Approved")
+    ) : null,
+    [firestore, user]
+  );
+  const { data: projects, isLoading: isLoadingProjects } = useCollection<CapstoneProject>(projectsQuery);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      semester: "",
-      academicYear: "",
-      capstoneTitle: "",
-      blockGroupNumber: "",
+      projectId: "",
       startTime: "",
       endTime: "",
       venue: "",
-      projectDetails: "",
     },
   });
 
+  const selectedProjectId = form.watch('projectId');
+  const selectedProject = projects?.find(p => p.id === selectedProjectId);
+
   function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!selectedProject) {
+        toast({ variant: "destructive", title: "Error", description: "Selected project not found."});
+        return;
+    }
+
     const consultationsCol = collection(firestore, "consultations");
     
-    // In a real app, you'd have a way to select students.
-    // For now, we'll assign the first two students from the static list.
-    const assignedStudents = allStudents.slice(0, 2);
-    
-    // In a real app, this would be the logged-in advisor's ID
-    const assignedAdvisor = advisors[0];
-    
     addDocumentNonBlocking(consultationsCol, {
-      ...values,
-      date: values.date.toISOString().split('T')[0], // format date as YYYY-MM-DD
+      capstoneProjectId: selectedProject.id,
+      capstoneTitle: selectedProject.title,
+      projectDetails: selectedProject.details,
+      // These would be fetched based on studentIds in a real app
+      students: [], 
+      studentIds: selectedProject.studentIds,
+      advisorId: selectedProject.adviserId,
+      date: values.date.toISOString().split('T')[0],
+      startTime: values.startTime,
+      endTime: values.endTime,
+      venue: values.venue,
       status: "Scheduled",
-      students: assignedStudents,
-      studentIds: assignedStudents.map(s => s.id),
-      advisorId: assignedAdvisor.id,
-      advisor: assignedAdvisor,
     });
 
     toast({
@@ -95,76 +106,44 @@ export default function SchedulePage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <div className="grid md:grid-cols-2 gap-8">
-                <FormField
+              <FormField
                   control={form.control}
-                  name="capstoneTitle"
+                  name="projectId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Capstone Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., AI-Powered Recommendation System" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="blockGroupNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Block/Group Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., BSCS-4A, Group 1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                    control={form.control}
-                    name="semester"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Semester</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a semester" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            <SelectItem value="1st Semester">1st Semester</SelectItem>
-                            <SelectItem value="2nd Semester">2nd Semester</SelectItem>
-                            <SelectItem value="Summer">Summer</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                  control={form.control}
-                  name="academicYear"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Academic Year</FormLabel>
+                      <FormItem>
+                      <FormLabel>Select Approved Project</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select an academic year" />
-                            </Trigger>
-                            </FormControl>
-                            <SelectContent>
-                            <SelectItem value="2024-2025">2024-2025</SelectItem>
-                            <SelectItem value="2023-2024">2023-2024</SelectItem>
-                            </SelectContent>
-                        </Select>
+                          <FormControl>
+                              <SelectTrigger>
+                                  {isLoadingProjects ? <Skeleton className="h-5 w-[250px]" /> : <SelectValue placeholder="Choose a project to schedule..." />}
+                              </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                              {isLoadingProjects ? <SelectItem value="loading" disabled>Loading projects...</SelectItem> : 
+                              projects?.map(project => (
+                                  <SelectItem key={project.id} value={project.id}>{project.title}</SelectItem>
+                              ))}
+                              {!isLoadingProjects && projects?.length === 0 && <div className="p-4 text-sm text-muted-foreground">No approved projects assigned to you.</div>}
+                          </SelectContent>
+                      </Select>
                       <FormMessage />
-                    </FormItem>
+                      </FormItem>
                   )}
-                />
+              />
+
+              {selectedProject && (
+                 <Card className="bg-muted/50">
+                    <CardHeader>
+                        <CardTitle className="text-lg">{selectedProject.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">{selectedProject.details}</p>
+                    </CardContent>
+                </Card>
+              )}
+
+
+              <div className="grid md:grid-cols-2 gap-8">
                 <FormField
                   control={form.control}
                   name="date"
@@ -248,29 +227,7 @@ export default function SchedulePage() {
                   )}
                 />
               </div>
-
-              <FormField
-                control={form.control}
-                name="projectDetails"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Details</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Provide a detailed description of the capstone project, including objectives, scope, and technologies used."
-                        className="min-h-[150px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      This information will be used to generate suggested talking points.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button type="submit">Schedule Consultation</Button>
+              <Button type="submit" disabled={!selectedProject}>Schedule Consultation</Button>
             </form>
           </Form>
         </CardContent>
@@ -278,3 +235,5 @@ export default function SchedulePage() {
     </div>
   );
 }
+
+    
