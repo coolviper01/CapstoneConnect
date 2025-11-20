@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -17,9 +18,9 @@ const GenerateTalkingPointsInputSchema = z.object({
   capstoneTitle: z.string().describe('The title of the capstone project.'),
   blockGroupNumber: z.string().describe('The block or group number of the capstone project.'),
   date: z.string().describe('The date of the consultation.'),
-  startTime: z.string().describe('The start time of the consultation.'),
-  endTime: z.string().describe('The end time of the consultation.'),
-  venue: z.string().describe('The venue of the consultation.'),
+  startTime: z.string().optional().describe('The start time of the consultation.'),
+  endTime: z.string().optional().describe('The end time of the consultation.'),
+  venue: z.string().optional().describe('The venue of the consultation.'),
   projectDetails: z.string().describe('Detailed information about the capstone project.'),
 });
 export type GenerateTalkingPointsInput = z.infer<typeof GenerateTalkingPointsInputSchema>;

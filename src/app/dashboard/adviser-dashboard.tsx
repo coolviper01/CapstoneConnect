@@ -44,29 +44,17 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
           if (!consultation) return;
           setIsAIPending(true);
           setAiError(null);
-          
-          const {
-            semester,
-            academicYear,
-            capstoneTitle,
-            blockGroupNumber,
-            date,
-            startTime,
-            endTime,
-            venue,
-            projectDetails
-          } = consultation;
 
           const result = await getTalkingPoints({
-            semester,
-            academicYear,
-            capstoneTitle,
-            blockGroupNumber,
-            date: date ? new Date(date).toISOString() : new Date().toISOString(),
-            startTime: startTime || '',
-            endTime: endTime || '',
-            venue: venue || '',
-            projectDetails
+            semester: consultation.semester,
+            academicYear: consultation.academicYear,
+            capstoneTitle: consultation.capstoneTitle,
+            blockGroupNumber: consultation.blockGroupNumber,
+            date: consultation.date ? new Date(consultation.date).toISOString() : new Date().toISOString(),
+            startTime: consultation.startTime || undefined,
+            endTime: consultation.endTime || undefined,
+            venue: consultation.venue || undefined,
+            projectDetails: consultation.projectDetails
           });
     
           if (result.success && result.talkingPoints) {
