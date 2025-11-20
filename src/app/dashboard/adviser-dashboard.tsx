@@ -20,6 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { getTalkingPoints } from '@/app/dashboard/consultations/actions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     const firestore = useFirestore();
@@ -103,12 +104,16 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     };
 
     const addDiscussionPoint = () => {
-        const newPoint: DiscussionPoint = { id: new Date().toISOString(), adviserComment: "", status: 'To Do' };
+        const newPoint: DiscussionPoint = { id: new Date().toISOString(), adviserComment: "", status: 'To Do', category: 'Documentation' };
         setDiscussionPoints(prev => [...prev, newPoint]);
     };
 
     const updateDiscussionPoint = (id: string, comment: string) => {
         setDiscussionPoints(prev => prev.map(p => p.id === id ? { ...p, adviserComment: comment } : p));
+    };
+    
+    const updateDiscussionPointCategory = (id: string, category: 'Documentation' | 'Prototype') => {
+        setDiscussionPoints(prev => prev.map(p => p.id === id ? { ...p, category: category } : p));
     };
 
     const removeDiscussionPoint = (id: string) => {
@@ -180,9 +185,26 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                     <CardHeader><CardTitle>Discussion Points</CardTitle><CardDescription>Add comments and action items for the students.</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                         {discussionPoints.map((point, index) => (
-                            <div key={point.id} className="flex items-start gap-2">
+                            <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
                                 <span className="font-bold text-muted-foreground pt-2">{index + 1}.</span>
-                                <Textarea value={point.adviserComment} onChange={(e) => updateDiscussionPoint(point.id, e.target.value)} className="flex-1" placeholder="Enter discussion point or action item..." />
+                                <div className="flex-1 grid gap-3">
+                                    <Textarea value={point.adviserComment} onChange={(e) => updateDiscussionPoint(point.id, e.target.value)} className="flex-1" placeholder="Enter discussion point or action item..." />
+                                     <div className='flex items-center gap-2'>
+                                        <span className="text-xs font-semibold text-muted-foreground">CATEGORY</span>
+                                        <Select
+                                            value={point.category}
+                                            onValueChange={(value: 'Documentation' | 'Prototype') => updateDiscussionPointCategory(point.id, value)}
+                                        >
+                                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                                                <SelectValue placeholder="Set category" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Documentation">Documentation</SelectItem>
+                                                <SelectItem value="Prototype">Prototype</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                     </div>
+                                </div>
                                 <Button variant="ghost" size="icon" onClick={() => removeDiscussionPoint(point.id)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
                         ))}
@@ -214,9 +236,10 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
     );
 }
 
-function ConsultationCard({ consultation, open, onToggle }: { consultation: Consultation, open: boolean, onToggle: () => void }) {
+function ConsultationCard({ consultation }: { consultation: Consultation }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Collapsible open={open} onOpenChange={onToggle}>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <Card>
         <CardHeader>
           <CardTitle className="font-semibold">{consultation.capstoneTitle}</CardTitle>
@@ -233,7 +256,7 @@ function ConsultationCard({ consultation, open, onToggle }: { consultation: Cons
           </CollapsibleTrigger>
         </CardFooter>
         <CollapsibleContent>
-          {open && <ConsultationDetail consultation={consultation} />}
+           {open && <ConsultationDetail consultation={consultation} />}
         </CollapsibleContent>
       </Card>
     </Collapsible>
@@ -249,7 +272,6 @@ export default function AdviserDashboard() {
   const [projectToReject, setProjectToReject] = useState<CapstoneProject | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [requestToSchedule, setRequestToSchedule] = useState<Consultation | null>(null);
-  const [openConsultations, setOpenConsultations] = useState<Record<string, boolean>>({});
 
   // --- QUERIES ---
   const consultationsQuery = useMemoFirebase(
@@ -293,10 +315,6 @@ export default function AdviserDashboard() {
     setRequestToSchedule(null);
   }
   
-  const toggleConsultation = (id: string) => {
-    setOpenConsultations(prev => ({ ...prev, [id]: !prev[id] }));
-  }
-
   // --- RENDER FUNCTIONS ---
   const renderConsultationList = (consultationsToRender: Consultation[] | undefined, loading: boolean, emptyMessage: string) => {
     if (loading) {
@@ -315,8 +333,6 @@ export default function AdviserDashboard() {
               <ConsultationCard 
                 key={c.id} 
                 consultation={c} 
-                open={!!openConsultations[c.id]}
-                onToggle={() => toggleConsultation(c.id)}
               />
             ))}
       </div>

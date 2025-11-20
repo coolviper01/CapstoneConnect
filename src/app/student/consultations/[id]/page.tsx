@@ -3,7 +3,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Calendar, Clock, MapPin, Users } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, FileText, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCollection, useDoc, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc, query, where } from "firebase/firestore";
@@ -67,6 +67,17 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
         return 'outline';
     }
   };
+  
+  const getCategoryIcon = (category: DiscussionPoint['category']) => {
+    switch(category) {
+        case 'Documentation':
+            return <FileText className="h-4 w-4" />;
+        case 'Prototype':
+            return <Code className="h-4 w-4" />;
+        default:
+            return null;
+    }
+  }
 
   if (isLoading || isLoadingStudents) {
     return (
@@ -138,7 +149,13 @@ export default function StudentConsultationDetailPage({ params }: { params: Prom
               {(discussionPoints && discussionPoints.length > 0) ? discussionPoints.map((point, index) => (
                 <div key={point.id} className="grid gap-4 p-4 border rounded-lg">
                    <div>
-                     <p className="text-sm font-semibold mb-2">Adviser's Comment #{index + 1}</p>
+                     <div className="flex justify-between items-center mb-2">
+                        <p className="text-sm font-semibold">Adviser's Comment #{index + 1}</p>
+                        <Badge variant="outline" className="flex items-center gap-1.5">
+                            {getCategoryIcon(point.category)}
+                            {point.category}
+                        </Badge>
+                     </div>
                      <p className="text-sm bg-muted p-3 rounded-md">{point.adviserComment || "No comment from adviser."}</p>
                    </div>
                    

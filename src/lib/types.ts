@@ -44,6 +44,7 @@ export type DiscussionPoint = {
   adviserComment: string;
   studentResponse?: string;
   status: 'To Do' | 'On-going' | 'Done';
+  category: 'Documentation' | 'Prototype';
 }
 
 export type Consultation = {
