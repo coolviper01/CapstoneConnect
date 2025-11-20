@@ -124,9 +124,10 @@
 
       /**
       * Validates that a user profile's 'id' field is immutable on update.
+      * The student status field must also remain unchanged by the student.
       */
-      function isProfileIdImmutable() {
-        return request.resource.data.id == resource.data.id;
+      function isStudentProfileSecure() {
+        return request.resource.data.id == resource.data.id && request.resource.data.status == resource.data.status;
       }
 
       /**
@@ -187,7 +188,7 @@
         allow get: if isSignedIn();
         allow list: if isSignedIn();
         allow create: if isOwner(advisorId) && isProfileIdCorrectlyAssigned(advisorId);
-        allow update: if resource != null && isOwner(advisorId) && isProfileIdImmutable();
+        allow update: if resource != null && isOwner(advisorId) && request.resource.data.id == resource.data.id;
         allow delete: if resource != null && isOwner(advisorId);
       }
 
@@ -204,8 +205,8 @@
         allow get: if isSignedIn();
         allow list: if isTeacher(); // Allow teachers to list students for approval.
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
-        allow update: if (isOwner(studentId) && request.resource.data.id == resource.data.id && request.resource.data.status == resource.data.status) || 
-                         (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && request.resource.data.keys().hasOnly(["status"]));
+        allow update: if (isOwner(studentId) && isStudentProfileSecure()) || 
+                         (isTeacher() && request.resource.data.keys().hasOnly(["status"]));
         allow delete: if resource != null && isOwner(studentId);
       }
 
@@ -220,7 +221,7 @@
         allow get: if isOwner(teacherId);
         allow list: if false;
         allow create: if isOwner(teacherId) && isProfileIdCorrectlyAssigned(teacherId);
-        allow update: if resource != null && isOwner(teacherId) && isProfileIdImmutable();
+        allow update: if resource != null && isOwner(teacherId) && request.resource.data.id == resource.data.id;
         allow delete: if resource != null && isOwner(teacherId);
       }
 
