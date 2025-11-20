@@ -96,7 +96,13 @@ export default function TeacherDashboard() {
     const handleApproveProject = (project: CapstoneProject) => {
         const projectRef = doc(firestore, 'capstoneProjects', project.id);
         const data = { status: 'Pending Adviser Approval' };
-        updateDoc(projectRef, data);
+        updateDoc(projectRef, data).catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: projectRef.path,
+                operation: 'update',
+                requestResourceData: data
+            }));
+        });
         toast({ title: "Project Approved!", description: `"${project.title}" has been forwarded to the adviser.` });
         setProjectToApprove(null);
     };
@@ -105,7 +111,13 @@ export default function TeacherDashboard() {
         if (!projectToReject) return;
         const projectRef = doc(firestore, 'capstoneProjects', projectToReject.id);
         const data = { status: 'Rejected', rejectionReason: rejectionReason };
-        updateDoc(projectRef, data);
+        updateDoc(projectRef, data).catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: projectRef.path,
+                operation: 'update',
+                requestResourceData: data
+            }));
+        });
         toast({ variant: "destructive", title: "Project Rejected", description: `"${projectToReject.title}" has been rejected.` });
         setProjectToReject(null);
         setRejectionReason("");
@@ -116,42 +128,61 @@ export default function TeacherDashboard() {
         const studentRef = doc(firestore, 'students', student.id);
         const studentUpdateData = { status: 'Active' };
 
-        const batch = writeBatch(firestore);
-        batch.update(studentRef, studentUpdateData);
+        try {
+            const batch = writeBatch(firestore);
+            batch.update(studentRef, studentUpdateData);
 
-        let wasAddedToProject = false;
-        let projectTitle = '';
+            let wasAddedToProject = false;
+            let projectTitle = '';
 
-        if (student.subjectId && student.block && student.groupNumber) {
-            const projectsQuery = query(
-                collection(firestore, 'capstoneProjects'),
-                where('subjectId', '==', student.subjectId),
-                where('block', '==', student.block),
-                where('groupNumber', '==', student.groupNumber)
-            );
-            const projectSnapshot = await getDocs(projectsQuery);
+            if (student.subjectId && student.block && student.groupNumber) {
+                const projectsQuery = query(
+                    collection(firestore, 'capstoneProjects'),
+                    where('subjectId', '==', student.subjectId),
+                    where('block', '==', student.block),
+                    where('groupNumber', '==', student.groupNumber)
+                );
+                const projectSnapshot = await getDocs(projectsQuery);
 
-            if (!projectSnapshot.empty) {
-                const projectDoc = projectSnapshot.docs[0];
-                const projectData = projectDoc.data();
-                projectTitle = projectData.title;
-                
-                if (!projectData.studentIds.includes(student.id)) {
-                    const newStudentIds = [...projectData.studentIds, student.id];
-                    batch.update(projectDoc.ref, { studentIds: newStudentIds });
-                    wasAddedToProject = true;
+                if (!projectSnapshot.empty) {
+                    const projectDoc = projectSnapshot.docs[0];
+                    const projectData = projectDoc.data();
+                    projectTitle = projectData.title;
+                    
+                    if (!projectData.studentIds.includes(student.id)) {
+                        const newStudentIds = [...projectData.studentIds, student.id];
+                        batch.update(projectDoc.ref, { studentIds: newStudentIds });
+                        wasAddedToProject = true;
+                    }
                 }
             }
+
+            batch.commit().catch(error => {
+                // This is a batched write, so the error could be on student or project update.
+                // We'll report the primary intended action.
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: studentRef.path,
+                    operation: 'update',
+                    requestResourceData: studentUpdateData
+                }));
+            });
+
+            if (wasAddedToProject) {
+                toast({ title: "Student Approved & Added to Project!", description: `${student.name} has been added to "${projectTitle}".` });
+            } else {
+                toast({ title: "Student Approved!", description: `${student.name} is now an active student.` });
+            }
+
+        } catch (error) {
+            // This catch is for errors during the `getDocs` phase, not the batch commit.
+            console.error("Error fetching projects for student approval:", error);
+            toast({
+                variant: "destructive",
+                title: "An unexpected error occurred",
+                description: "Could not retrieve project information to add the student.",
+            });
         }
-
-        await batch.commit();
-
-        if (wasAddedToProject) {
-            toast({ title: "Student Approved & Added to Project!", description: `${student.name} has been added to "${projectTitle}".` });
-        } else {
-            toast({ title: "Student Approved!", description: `${student.name} is now an active student.` });
-        }
-
+        
         setStudentToApprove(null);
     };
 
@@ -261,7 +292,7 @@ export default function TeacherDashboard() {
                                             <TableHead>Student Name</TableHead>
                                             <TableHead>Email</TableHead>
                                             <TableHead>Subject</TableHead>
-                                            <TableHead>Block & Group</TableHead>
+                                            <TableHead>Block &amp; Group</TableHead>
                                             <TableHead className="text-right">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -390,6 +421,3 @@ export default function TeacherDashboard() {
             </AlertDialog>
         </div>
     );
-}
-
-    
