@@ -21,8 +21,11 @@ export default function TalkingPoints({ consultation }: { consultation: Consulta
       
       const { date, ...restOfConsultation } = consultation;
       
+      // We only need a subset of fields for the AI, and notes/attendees can be large.
+      const { notes, attendees, status, students, ...inputData } = restOfConsultation;
+
       const result = await getTalkingPoints({
-        ...restOfConsultation,
+        ...inputData,
         date: new Date(date).toISOString(),
       });
 
