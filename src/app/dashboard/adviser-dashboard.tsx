@@ -19,7 +19,6 @@ import { ScheduleConsultationForm } from './schedule-consultation-form';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { getTalkingPoints } from '@/app/dashboard/consultations/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function ConsultationDetail({ consultation }: { consultation: Consultation }) {
@@ -36,9 +35,6 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
 
     const [attendees, setAttendees] = useState<Attendee[]>([]);
     const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
-    const [talkingPoints, setTalkingPoints] = useState<string[]>([]);
-    const [isAIPending, setIsAIPending] = useState(true);
-    const [aiError, setAiError] = useState<string | null>(null);
 
     useEffect(() => {
         if (consultation) {
@@ -46,38 +42,6 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
             setDiscussionPoints(Array.isArray(consultation.discussionPoints) ? consultation.discussionPoints : []);
         }
     }, [consultation]);
-    
-    useEffect(() => {
-        const fetchTalkingPoints = async () => {
-          if (!consultation || !consultation.projectDetails) {
-            setIsAIPending(false);
-            setAiError("Project details are missing, cannot generate talking points.");
-            return;
-          };
-          setIsAIPending(true);
-          setAiError(null);
-
-          const result = await getTalkingPoints({
-            semester: consultation.semester,
-            academicYear: consultation.academicYear,
-            capstoneTitle: consultation.capstoneTitle,
-            blockGroupNumber: consultation.blockGroupNumber,
-            date: consultation.date ? new Date(consultation.date).toISOString() : new Date().toISOString(),
-            startTime: consultation.startTime,
-            endTime: consultation.endTime,
-            venue: consultation.venue,
-            projectDetails: consultation.projectDetails
-          });
-    
-          if (result.success && result.talkingPoints) {
-            setTalkingPoints(result.talkingPoints);
-          } else {
-            setAiError(result.error || "An unknown error occurred.");
-          }
-          setIsAIPending(false);
-        };
-        fetchTalkingPoints();
-  }, [consultation]);
 
     const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
     
@@ -129,11 +93,6 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
         }
     };
     
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        toast({ title: "Copied to clipboard!" });
-    };
-
     return (
         <div className="grid md:grid-cols-3 gap-6 pt-6">
             <div className="md:col-span-1 flex flex-col gap-6">
@@ -167,22 +126,10 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                         )}
                     </CardContent>
                 </Card>
-                 <Card>
-                    <CardHeader className="flex flex-row items-start justify-between gap-4">
-                        <div className="space-y-1.5"><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" />Suggested Talking Points</CardTitle><CardDescription>AI-generated topics to discuss.</CardDescription></div>
-                        {!isAIPending && talkingPoints.length > 0 && (<Button variant="ghost" size="icon" onClick={() => copyToClipboard(talkingPoints.join('\n'))}><Copy className="h-4 w-4" /><span className="sr-only">Copy all points</span></Button>)}
-                    </CardHeader>
-                    <CardContent>
-                        {isAIPending ? <div className="space-y-3"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-[80%]" /></div> :
-                         aiError ? <p className="text-sm text-destructive">{aiError}</p> :
-                         talkingPoints.length > 0 ? (<ul className="space-y-3">{talkingPoints.map((point, index) => (<li key={index} className="flex items-start gap-3 text-sm"><Check className="h-4 w-4 mt-0.5 text-primary shrink-0" /><span>{point}</span></li>))}</ul>) :
-                         <p className="text-sm text-muted-foreground">No talking points generated.</p>}
-                    </CardContent>
-                </Card>
             </div>
             <div className="md:col-span-2 flex flex-col gap-6">
                 <Card>
-                    <CardHeader><CardTitle>Discussion Points</CardTitle><CardDescription>Add comments and action items for the students.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle className="font-semibold">Discussion Points</CardTitle><CardDescription>Add comments and action items for the students.</CardDescription></CardHeader>
                     <CardContent className="space-y-4">
                         {discussionPoints.map((point, index) => (
                             <div key={point.id} className="flex items-start gap-3 p-3 border rounded-lg">
@@ -458,4 +405,5 @@ export default function AdviserDashboard() {
   );
 }
 
+    
     
