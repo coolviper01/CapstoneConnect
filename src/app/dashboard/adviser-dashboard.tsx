@@ -251,8 +251,8 @@ function ConsultationDetail({ consultation }: { consultation: Consultation }) {
                                             <p className="text-sm whitespace-pre-wrap">{point.studentResponse}</p>
                                             {point.studentUpdateStatus === 'Pending' && (
                                                 <div className="flex justify-end gap-2 mt-3">
-                                                    <Button size="sm" variant="outline" onClick={() => setRejectionPoint(point)}><ThumbsDown className="mr-2 h-4 w-4" />Reject</Button>
-                                                    <Button size="sm" onClick={() => handleUpdateReview(point.id, 'Approved')}><ThumbsUp className="mr-2 h-4 w-4" />Approve</Button>
+                                                    <Button size="sm" variant="outline" onClick={() => setRejectionPoint(point)}><X className="mr-2 h-4 w-4" /> Reject</Button>
+                                                    <Button size="sm" onClick={() => handleUpdateReview(point.id, 'Approved')}><Check className="mr-2 h-4 w-4" /> Approve</Button>
                                                 </div>
                                             )}
                                             {point.studentUpdateStatus === 'Rejected' && point.adviserFeedback && (
