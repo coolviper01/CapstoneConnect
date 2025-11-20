@@ -1,6 +1,6 @@
 
 'use client';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, MapPin, Check, X, FileText, Users, PlusCircle, Trash2, Bot, Copy, QrCode, Play, Square, CheckCircle, ThumbsUp, ThumbsDown, Lock, Printer } from 'lucide-react';
@@ -23,12 +23,14 @@ import QRCode from "react-qr-code";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ConsultationReport } from './consultation-report';
+import { useReactToPrint } from 'react-to-print';
 
 
 function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: Consultation, advisor?: Advisor, setOpen: (isOpen: boolean) => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const consultationRef = useMemoFirebase(() => doc(firestore, "consultations", consultation.id), [firestore, consultation.id]);
+    const reportComponentRef = useRef(null);
 
     const studentIds = useMemo(() => consultation.studentIds || [], [consultation.studentIds]);
     const studentsQuery = useMemoFirebase(() => {
@@ -40,7 +42,10 @@ function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: 
     const [discussionPoints, setDiscussionPoints] = useState<DiscussionPoint[]>([]);
     const [rejectionPoint, setRejectionPoint] = useState<DiscussionPoint | null>(null);
     const [rejectionReason, setRejectionReason] = useState("");
-    const [isReportOpen, setReportOpen] = useState(false);
+
+    const handlePrint = useReactToPrint({
+        content: () => reportComponentRef.current,
+    });
 
     useEffect(() => {
         if (consultation) {
@@ -142,14 +147,6 @@ function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: 
                 description: "This consultation has been marked as completed."
             });
         }
-    };
-    
-    const handlePrintReport = () => {
-        setReportOpen(true);
-        // Delay printing to allow dialog to render
-        setTimeout(() => {
-          window.print();
-        }, 500);
     };
 
     const hasPendingUpdates = discussionPoints.some(p => p.studentUpdateStatus === 'Pending');
@@ -338,7 +335,7 @@ function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: 
                                 </TooltipProvider>
                             </>
                         ) : (
-                            <Button onClick={handlePrintReport}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
+                             <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Report</Button>
                         )}
                         </CardFooter>
                     </Card>
@@ -363,17 +360,9 @@ function ConsultationDetail({ consultation, advisor, setOpen }: { consultation: 
                 </AlertDialogContent>
             </AlertDialog>
             
-            <Dialog open={isReportOpen} onOpenChange={setReportOpen}>
-                <DialogContent className="max-w-4xl no-print">
-                    <DialogHeader>
-                        <DialogTitle>Consultation Report</DialogTitle>
-                        <DialogDescription>
-                            This is a printable summary of the completed consultation.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {advisor && <ConsultationReport consultation={consultation} advisor={advisor} />}
-                </DialogContent>
-            </Dialog>
+            <div style={{ display: "none" }}>
+              {advisor && <ConsultationReport ref={reportComponentRef} consultation={consultation} advisor={advisor} />}
+            </div>
         </div>
     );
 }
@@ -624,5 +613,3 @@ export default function AdviserDashboard() {
     </div>
   );
 }
-
-    
