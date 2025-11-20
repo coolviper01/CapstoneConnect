@@ -3,22 +3,25 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Logo } from "@/components/logo";
-import { UserNav } from "@/components/user-nav";
-import { ArrowRight, Calendar, Clock, MapPin, BookOpenCheck } from "lucide-react";
+import { ArrowRight, Calendar, Clock, MapPin } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import type { Consultation } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StudentDashboardPage() {
   const firestore = useFirestore();
-  // In a real app, this would be filtered for the logged-in student.
-  // For now, we'll show all scheduled consultations.
+  const { user } = useUser();
+  
+  // Filter consultations where the student's ID is in the `studentIds` array.
   const consultationsQuery = useMemoFirebase(
-    () => query(collection(firestore, "consultations"), where("status", "==", "Scheduled")),
-    [firestore]
+    () => user ? query(
+        collection(firestore, "consultations"), 
+        where("studentIds", "array-contains", user.uid),
+        where("status", "==", "Scheduled")
+    ) : null,
+    [firestore, user]
   );
   const { data: studentConsultations, isLoading } = useCollection<Consultation>(consultationsQuery);
 
@@ -85,25 +88,11 @@ export default function StudentDashboardPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-dvh bg-background">
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4 sm:px-6">
-        <Logo />
-        <nav className="ml-auto flex items-center gap-4">
-           <Button variant="outline" asChild>
-            <Link href="/student/projects">
-                <BookOpenCheck className="mr-2 h-4 w-4" />
-                My Projects
-            </Link>
-           </Button>
-          <UserNav />
-        </nav>
-      </header>
-      <main className="flex-1 p-4 sm:px-6 sm:py-8">
-        <PageHeader title="My Consultations" description="Here are your upcoming capstone consultations." />
-        <div className="grid gap-6 mt-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="flex flex-col gap-6">
+        <PageHeader title="My Upcoming Consultations" description="Here are your scheduled capstone appointments." />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {renderContent()}
         </div>
-      </main>
     </div>
   );
 }
