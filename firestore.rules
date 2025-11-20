@@ -204,8 +204,8 @@
         allow get: if isSignedIn();
         allow list: if isTeacher(); // Allow teachers to list students for approval.
         allow create: if isOwner(studentId) && isProfileIdCorrectlyAssigned(studentId);
-        allow update: if (isOwner(studentId) && isProfileIdImmutable()) || 
-                         (isTeacher() && request.resource.data.keys().hasOnly(["status"]));
+        allow update: if (isOwner(studentId) && request.resource.data.id == resource.data.id && request.resource.data.status == resource.data.status) || 
+                         (exists(/databases/$(database)/documents/teachers/$(request.auth.uid)) && request.resource.data.keys().hasOnly(["status"]));
         allow delete: if resource != null && isOwner(studentId);
       }
 
