@@ -1,4 +1,4 @@
-# Firebase Studio
+# CapstoneConnect
 
 This is a NextJS starter in Firebase Studio.
 
